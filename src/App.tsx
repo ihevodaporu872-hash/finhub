@@ -7,6 +7,7 @@ import { BddsPageWrapper } from './pages/BddsPageWrapper';
 import { BdrPageWrapper } from './pages/BdrPageWrapper';
 import { BblPageWrapper } from './pages/BblPageWrapper';
 import { AdminUsersPageWrapper } from './pages/AdminUsersPageWrapper';
+import { AdminProjectsPageWrapper } from './pages/AdminProjectsPageWrapper';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
               <Route path="/bdr" element={<BdrPageWrapper />} />
               <Route path="/bbl" element={<BblPageWrapper />} />
               <Route path="/admin/users" element={<AdminUsersPageWrapper />} />
+              <Route path="/admin/projects" element={<AdminProjectsPageWrapper />} />
               <Route path="/" element={<Navigate to="/bdds" replace />} />
             </Route>
           </Route>

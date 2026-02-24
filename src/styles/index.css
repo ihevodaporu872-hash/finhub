@@ -34,3 +34,9 @@ body {
   color: #bfbfbf !important;
   background-color: #fafafa !important;
 }
+
+/* Неактивные проекты — полупрозрачный шрифт */
+.project-row-inactive td {
+  opacity: 0.45;
+  background-color: #fafafa !important;
+}

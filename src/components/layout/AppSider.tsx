@@ -6,6 +6,7 @@ import {
   BankOutlined,
   SettingOutlined,
   TeamOutlined,
+  ProjectOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
@@ -23,6 +24,7 @@ const menuItems: MenuItem[] = [
     label: 'Администрирование',
     children: [
       { key: '/admin/users', icon: <TeamOutlined />, label: 'Пользователи' },
+      { key: '/admin/projects', icon: <ProjectOutlined />, label: 'Проекты' },
     ],
   },
 ];
