@@ -6,6 +6,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { BddsPageWrapper } from './pages/BddsPageWrapper';
 import { BdrPageWrapper } from './pages/BdrPageWrapper';
 import { BblPageWrapper } from './pages/BblPageWrapper';
+import { AdminUsersPageWrapper } from './pages/AdminUsersPageWrapper';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
               <Route path="/bdds" element={<BddsPageWrapper />} />
               <Route path="/bdr" element={<BdrPageWrapper />} />
               <Route path="/bbl" element={<BblPageWrapper />} />
+              <Route path="/admin/users" element={<AdminUsersPageWrapper />} />
               <Route path="/" element={<Navigate to="/bdds" replace />} />
             </Route>
           </Route>

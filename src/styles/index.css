@@ -28,3 +28,9 @@ body {
   background-color: #fafafa !important;
   font-weight: 600;
 }
+
+/* Неактивные пользователи */
+.user-row-disabled td {
+  color: #bfbfbf !important;
+  background-color: #fafafa !important;
+}

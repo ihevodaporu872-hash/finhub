@@ -4,14 +4,27 @@ import {
   DollarOutlined,
   BarChartOutlined,
   BankOutlined,
+  SettingOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
 
 const { Sider } = Layout;
 
-const menuItems = [
+type MenuItem = Required<MenuProps>['items'][number];
+
+const menuItems: MenuItem[] = [
   { key: '/bdds', icon: <DollarOutlined />, label: 'БДДС' },
   { key: '/bdr', icon: <BarChartOutlined />, label: 'БДР' },
   { key: '/bbl', icon: <BankOutlined />, label: 'ББЛ' },
+  {
+    key: 'admin',
+    icon: <SettingOutlined />,
+    label: 'Администрирование',
+    children: [
+      { key: '/admin/users', icon: <TeamOutlined />, label: 'Пользователи' },
+    ],
+  },
 ];
 
 interface Props {
@@ -22,6 +35,8 @@ interface Props {
 export function AppSider({ collapsed, onCollapse }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const openKeys = location.pathname.startsWith('/admin') ? ['admin'] : [];
 
   return (
     <Sider
@@ -41,8 +56,11 @@ export function AppSider({ collapsed, onCollapse }: Props) {
         theme="dark"
         mode="inline"
         selectedKeys={[location.pathname]}
+        defaultOpenKeys={openKeys}
         items={menuItems}
-        onClick={({ key }) => navigate(key)}
+        onClick={({ key }) => {
+          if (key !== 'admin') navigate(key);
+        }}
       />
     </Sider>
   );
