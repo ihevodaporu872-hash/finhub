@@ -1,10 +1,16 @@
 import { useMemo } from 'react';
 import { Table } from 'antd';
+import { RightOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import type { BddsSection, BddsTableRow } from '../../types/bdds';
 import { MONTHS } from '../../utils/constants';
 import { formatAmount } from '../../utils/formatters';
 import { BddsEditableCell } from './BddsEditableCell';
+
+const DRILLDOWN_MAP: Record<string, string> = {
+  income: '/bdds/income',
+};
 
 interface Props {
   sections: BddsSection[];
@@ -12,18 +18,18 @@ interface Props {
 }
 
 export function BddsTable({ sections, onUpdateEntry }: Props) {
+  const navigate = useNavigate();
+
   const dataSource = useMemo((): BddsTableRow[] => {
     const rows: BddsTableRow[] = [];
 
     for (const section of sections) {
-      // Строка-заголовок секции
       rows.push({
         key: `header-${section.sectionCode}`,
         name: section.sectionName.toUpperCase(),
         isHeader: true,
       });
 
-      // Строки данных
       for (const row of section.rows) {
         const tableRow: BddsTableRow = {
           key: row.categoryId,
@@ -57,12 +63,24 @@ export function BddsTable({ sections, onUpdateEntry }: Props) {
           if (record.isHeader) {
             return <strong>{text}</strong>;
           }
+
+          const drilldownPath = record.rowType ? DRILLDOWN_MAP[record.rowType] : undefined;
+          if (drilldownPath && record.rowType === 'income' && !record.isCalculated) {
+            return (
+              <span
+                onClick={() => navigate(drilldownPath)}
+                style={{ cursor: 'pointer', color: '#1677ff' }}
+              >
+                {text} <RightOutlined style={{ fontSize: 10 }} />
+              </span>
+            );
+          }
+
           return text;
         },
       },
     ];
 
-    // Колонки месяцев
     for (const m of MONTHS) {
       cols.push({
         title: m.short,
@@ -90,7 +108,6 @@ export function BddsTable({ sections, onUpdateEntry }: Props) {
       });
     }
 
-    // Колонка "Итого"
     cols.push({
       title: 'Итого',
       dataIndex: 'total',
@@ -110,7 +127,7 @@ export function BddsTable({ sections, onUpdateEntry }: Props) {
     });
 
     return cols;
-  }, [onUpdateEntry]);
+  }, [onUpdateEntry, navigate]);
 
   return (
     <Table

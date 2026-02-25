@@ -8,6 +8,7 @@ import { BdrPageWrapper } from './pages/BdrPageWrapper';
 import { BblPageWrapper } from './pages/BblPageWrapper';
 import { AdminUsersPageWrapper } from './pages/AdminUsersPageWrapper';
 import { AdminProjectsPageWrapper } from './pages/AdminProjectsPageWrapper';
+import { BddsIncomePageWrapper } from './pages/BddsIncomePageWrapper';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/bdds" element={<BddsPageWrapper />} />
+              <Route path="/bdds/income" element={<BddsIncomePageWrapper />} />
               <Route path="/bdr" element={<BdrPageWrapper />} />
               <Route path="/bbl" element={<BblPageWrapper />} />
               <Route path="/admin/users" element={<AdminUsersPageWrapper />} />
