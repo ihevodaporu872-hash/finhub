@@ -28,6 +28,7 @@ export function BddsTable({ sections, onUpdateFact }: Props) {
           categoryId: row.categoryId,
           isCalculated: row.isCalculated,
           rowType: row.rowType,
+          sectionCode: section.sectionCode,
           plan_total: row.total,
           fact_total: row.factTotal,
         };
@@ -79,7 +80,7 @@ export function BddsTable({ sections, onUpdateFact }: Props) {
       rowClassName={(record) => {
         if (record.isHeader) return 'bdds-section-header';
         if (record.isCalculated) return 'bdds-calculated-row';
-        if (record.rowType === 'income') return 'bdds-auto-row';
+        if (record.rowType === 'income' && record.sectionCode === 'operating') return 'bdds-auto-row';
         return '';
       }}
     />

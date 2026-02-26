@@ -39,8 +39,8 @@ export function useBdds(year: number): UseBddsResult {
           let planMonths = planMap.get(cat.id) || {};
           const factMonths = factMap.get(cat.id) || {};
 
-          // Автозаполнение плана для строки "доходы" из Income
-          if (cat.row_type === 'income' && !cat.is_calculated) {
+          // Автозаполнение плана только для доходов операционной секции
+          if (sectionCode === 'operating' && cat.row_type === 'income' && !cat.is_calculated) {
             planMonths = { ...incomeTotals };
           }
 
