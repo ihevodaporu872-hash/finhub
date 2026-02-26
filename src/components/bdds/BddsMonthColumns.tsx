@@ -60,10 +60,11 @@ export function buildMonthColumns(
           render: (_: unknown, record: BddsTableRow) => {
             if (record.isHeader) return null;
             const value = record[`fact_month_${m.key}`] as number;
+            const readOnly = record.isCalculated || record.rowType === 'income';
             return (
               <BddsEditableCell
                 value={value}
-                isCalculated={record.isCalculated}
+                isCalculated={readOnly}
                 onSave={(newValue) => {
                   if (record.categoryId) {
                     onUpdateFact(record.categoryId, m.key, newValue);

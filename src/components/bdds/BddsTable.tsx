@@ -100,6 +100,7 @@ export function BddsTable({ sections, onUpdateFact }: Props) {
       rowClassName={(record) => {
         if (record.isHeader) return 'bdds-section-header';
         if (record.isCalculated) return 'bdds-calculated-row';
+        if (record.rowType === 'income') return 'bdds-auto-row';
         return '';
       }}
     />

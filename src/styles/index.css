@@ -23,6 +23,12 @@ body {
   color: #ff4d4f;
 }
 
+/* БДДС — строки с автозаполнением (доходы) */
+.bdds-auto-row td {
+  background-color: #f0f5ff !important;
+  font-style: italic;
+}
+
 /* Столбец План */
 .bdds-plan-cell {
   background-color: #f6ffed !important;
