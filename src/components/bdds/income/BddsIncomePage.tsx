@@ -46,7 +46,7 @@ export function BddsIncomePage() {
             onClick={() => navigate('/bdds')}
             style={{ marginRight: 8 }}
           />
-          Поступление средств от текущей деятельности
+          Плановый график выполнения и финансирования проектов
         </span>
       }
     >

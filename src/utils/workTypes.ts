@@ -18,7 +18,7 @@ export const WORK_TYPES: WorkType[] = [
   { code: 'total_smr', name: 'Всего СМР по проекту', isCalculated: true },
   { code: 'advance_income', name: 'Аванс (Приход)', group: 'finance' },
   { code: 'advance_offset', name: 'Зачет Аванса', group: 'finance' },
-  { code: 'guarantee_retention', name: 'Гарантийное Удержание (2%)', group: 'finance' },
+  { code: 'guarantee_retention', name: 'Гарантийное Удержание', group: 'finance' },
   { code: 'guarantee_return', name: 'Возврат ГУ', group: 'finance' },
   { code: 'total_income', name: 'Итого поступление за СМР по проекту', isCalculated: true },
 ];

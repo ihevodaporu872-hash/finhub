@@ -3,7 +3,7 @@ import type { IncomeTableRow } from '../types/bddsIncome';
 import type { Project } from '../types/projects';
 import * as bddsIncomeService from '../services/bddsIncomeService';
 import * as projectsService from '../services/projectsService';
-import { WORK_TYPES, SMR_CODES, DATA_WORK_TYPES } from '../utils/workTypes';
+import { WORK_TYPES, SMR_CODES } from '../utils/workTypes';
 
 interface UseBddsIncomeResult {
   rows: IncomeTableRow[];
@@ -97,9 +97,13 @@ export function useBddsIncome(): UseBddsIncomeResult {
           if (wt.code === 'total_smr') {
             sum = calcGroupSum(SMR_CODES, mk);
           } else if (wt.code === 'total_income') {
-            const smr = calcGroupSum(SMR_CODES, mk);
-            const finance = calcFinanceSum(mk);
-            sum = smr + finance;
+            const prevMk = getPrevMonthKey(mk);
+            const totalSmrPrev = calcGroupSum(SMR_CODES, prevMk);
+            const advanceIncome = calcCodeSum('advance_income', mk);
+            const advanceOffsetPrev = calcCodeSum('advance_offset', prevMk);
+            const guaranteeRetentionPrev = calcCodeSum('guarantee_retention', prevMk);
+            const guaranteeReturn = calcCodeSum('guarantee_return', mk);
+            sum = totalSmrPrev + advanceIncome - advanceOffsetPrev - guaranteeRetentionPrev + guaranteeReturn;
           }
           row[mk] = sum;
         }
@@ -123,13 +127,18 @@ export function useBddsIncome(): UseBddsIncomeResult {
       .reduce((sum, e) => sum + Number(e.amount), 0);
   }
 
-  function calcFinanceSum(monthKey: string): number {
-    const financeCodes = DATA_WORK_TYPES
-      .filter((w) => w.group === 'finance')
-      .map((w) => w.code);
+  function calcCodeSum(code: string, monthKey: string): number {
     return entries
-      .filter((e) => financeCodes.includes(e.work_type_code) && e.month_key === monthKey)
+      .filter((e) => e.work_type_code === code && e.month_key === monthKey)
       .reduce((sum, e) => sum + Number(e.amount), 0);
+  }
+
+  function getPrevMonthKey(monthKey: string): string {
+    const [yearStr, monthStr] = monthKey.split('-');
+    let y = parseInt(yearStr, 10);
+    let m = parseInt(monthStr, 10) - 1;
+    if (m === 0) { m = 12; y -= 1; }
+    return `${y}-${String(m).padStart(2, '0')}`;
   }
 
   const importData = useCallback(

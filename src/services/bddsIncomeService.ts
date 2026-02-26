@@ -65,17 +65,48 @@ export async function upsertNotes(
 }
 
 export async function getIncomeTotalsByMonth(year: number): Promise<Record<number, number>> {
+  // Загружаем данные за год + декабрь предыдущего года (для расчёта января)
+  const prevDec = `${year - 1}-12`;
   const { data, error } = await supabase
     .from('bdds_income_entries')
-    .select('month_key, amount')
-    .like('month_key', `${year}-%`);
+    .select('work_type_code, month_key, amount')
+    .or(`month_key.like.${year}-%,month_key.eq.${prevDec}`);
 
   if (error) throw error;
 
+  const SMR_CODES = [
+    'prep_works', 'dewatering', 'earthworks', 'waterproofing',
+    'monolith', 'masonry', 'facade', 'roofing', 'interior',
+    'elevators', 'engineering', 'landscaping', 'external_networks',
+  ];
+
+  // Сгруппировать по (work_type_code, month_key)
+  const byCodeMonth = new Map<string, number>();
+  for (const e of data) {
+    const key = `${e.work_type_code}|${e.month_key}`;
+    byCodeMonth.set(key, (byCodeMonth.get(key) || 0) + Number(e.amount));
+  }
+
+  const getVal = (code: string, mk: string) => byCodeMonth.get(`${code}|${mk}`) || 0;
+  const getSmrSum = (mk: string) => SMR_CODES.reduce((s, c) => s + getVal(c, mk), 0);
+
+  const getPrevMk = (month: number): string => {
+    if (month === 1) return prevDec;
+    return `${year}-${String(month - 1).padStart(2, '0')}`;
+  };
+
+  // Формула: total_income[M] = total_smr[M-1] + advance_income[M]
+  //   - advance_offset[M-1] - guarantee_retention[M-1] + guarantee_return[M]
   const totals: Record<number, number> = {};
-  for (const entry of data) {
-    const month = parseInt(entry.month_key.split('-')[1], 10);
-    totals[month] = (totals[month] || 0) + Number(entry.amount);
+  for (let m = 1; m <= 12; m++) {
+    const mk = `${year}-${String(m).padStart(2, '0')}`;
+    const prevMk = getPrevMk(m);
+    totals[m] =
+      getSmrSum(prevMk)
+      + getVal('advance_income', mk)
+      - getVal('advance_offset', prevMk)
+      - getVal('guarantee_retention', prevMk)
+      + getVal('guarantee_return', mk);
   }
   return totals;
 }
