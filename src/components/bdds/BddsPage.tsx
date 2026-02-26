@@ -6,7 +6,7 @@ import { BddsTable } from './BddsTable';
 
 export function BddsPage() {
   const [year, setYear] = useState(new Date().getFullYear());
-  const { sections, loading, saving, error, updateEntry, saveAll } = useBdds(year, 'plan');
+  const { sections, loading, saving, error, updateFactEntry, saveAll } = useBdds(year);
 
   const handleSave = async () => {
     try {
@@ -34,7 +34,7 @@ export function BddsPage() {
           <Spin size="large" />
         </div>
       ) : (
-        <BddsTable sections={sections} onUpdateEntry={updateEntry} />
+        <BddsTable sections={sections} onUpdateFact={updateFactEntry} />
       )}
     </Card>
   );

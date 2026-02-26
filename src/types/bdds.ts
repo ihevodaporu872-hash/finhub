@@ -30,6 +30,8 @@ export interface BddsRow {
   isCalculated: boolean;
   months: MonthValues;
   total: number;
+  factMonths: MonthValues;
+  factTotal: number;
 }
 
 export interface BddsSection {

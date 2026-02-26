@@ -64,6 +64,22 @@ export async function upsertNotes(
   if (error) throw error;
 }
 
+export async function getIncomeTotalsByMonth(year: number): Promise<Record<number, number>> {
+  const { data, error } = await supabase
+    .from('bdds_income_entries')
+    .select('month_key, amount')
+    .like('month_key', `${year}-%`);
+
+  if (error) throw error;
+
+  const totals: Record<number, number> = {};
+  for (const entry of data) {
+    const month = parseInt(entry.month_key.split('-')[1], 10);
+    totals[month] = (totals[month] || 0) + Number(entry.amount);
+  }
+  return totals;
+}
+
 export async function deleteProjectEntries(projectId: string): Promise<void> {
   const { error: e1 } = await supabase
     .from('bdds_income_entries')

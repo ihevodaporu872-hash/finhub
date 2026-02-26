@@ -23,6 +23,29 @@ body {
   color: #ff4d4f;
 }
 
+/* Столбец План */
+.bdds-plan-cell {
+  background-color: #f6ffed !important;
+  font-size: 12px;
+}
+
+/* Столбец Факт */
+.bdds-fact-cell {
+  font-size: 12px;
+}
+
+/* Столбец Абсолютное отклонение */
+.bdds-abs-cell {
+  background-color: #fff7e6 !important;
+  font-size: 12px;
+}
+
+/* Столбец Относительное отклонение */
+.bdds-rel-cell {
+  background-color: #fff7e6 !important;
+  font-size: 11px;
+}
+
 /* Итоговая колонка */
 .bdds-total-cell {
   background-color: #fafafa !important;
