@@ -37,11 +37,12 @@ export function useBdds(year: number): UseBddsResult {
 
         const rows: BddsRow[] = sectionCategories.map((cat) => {
           let planMonths = planMap.get(cat.id) || {};
-          const factMonths = factMap.get(cat.id) || {};
+          let factMonths = factMap.get(cat.id) || {};
 
-          // Автозаполнение плана для строки "доходы" из Income
+          // Автозаполнение план и факт для строки "доходы" из Income
           if (cat.row_type === 'income' && !cat.is_calculated) {
             planMonths = { ...incomeTotals };
+            factMonths = { ...incomeTotals };
           }
 
           return {
