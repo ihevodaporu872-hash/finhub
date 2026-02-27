@@ -111,6 +111,98 @@ body {
   padding-left: 24px;
 }
 
+/* Утилиты — отступы и размеры */
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.w-100 {
+  width: 100px;
+}
+
+.mr-8 {
+  margin-right: 8px;
+}
+
+.hidden-input {
+  display: none;
+}
+
+/* Тулбар / фильтры */
+.filter-dropdown {
+  padding: 8px;
+}
+
+.filter-input {
+  margin-bottom: 8px;
+  display: block;
+}
+
+.filter-icon-active {
+  color: #1677ff;
+}
+
+/* Сайдбар */
+.sider-container {
+  min-height: 100vh;
+}
+
+.sider-logo {
+  padding: 16px;
+  text-align: center;
+}
+
+.sider-logo-text {
+  color: #fff;
+}
+
+.sider-logo-text--collapsed {
+  font-size: 14px;
+}
+
+.sider-logo-text--expanded {
+  font-size: 20px;
+}
+
+/* Редактируемая ячейка */
+.editable-cell-view {
+  cursor: pointer;
+  min-height: 22px;
+  padding: 0 4px;
+}
+
+/* Select ширина */
+.select-year {
+  width: 100px;
+}
+
+.select-project {
+  min-width: 250px;
+}
+
+.select-project-wide {
+  width: 300px;
+}
+
+/* Центрированный контент загрузки */
+.page-center {
+  text-align: center;
+  padding: 48px;
+}
+
+/* Алерт с отступом */
+.alert-mb {
+  margin-bottom: 16px;
+}
+
 /* Адаптивность БДР */
 @media (max-width: 768px) {
   .bdr-overhead-indent {

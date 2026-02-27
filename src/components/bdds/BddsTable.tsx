@@ -5,12 +5,12 @@ import type { BddsSection, BddsTableRow } from '../../types/bdds';
 import { MONTHS } from '../../utils/constants';
 import { buildMonthColumns, buildTotalColumns } from './BddsMonthColumns';
 
-interface Props {
+interface IProps {
   sections: BddsSection[];
   onUpdateFact: (categoryId: string, month: number, amount: number) => void;
 }
 
-export function BddsTable({ sections, onUpdateFact }: Props) {
+export const BddsTable = ({ sections, onUpdateFact }: IProps) => {
   const dataSource = useMemo((): BddsTableRow[] => {
     const rows: BddsTableRow[] = [];
 

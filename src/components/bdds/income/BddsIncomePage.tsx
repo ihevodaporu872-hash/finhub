@@ -6,7 +6,7 @@ import { BddsIncomeToolbar } from './BddsIncomeToolbar';
 import { BddsIncomeTable } from './BddsIncomeTable';
 import type { ExcelImportData } from '../../../types/bddsIncome';
 
-export function BddsIncomePage() {
+export const BddsIncomePage = () => {
   const navigate = useNavigate();
   const {
     rows,
@@ -44,7 +44,7 @@ export function BddsIncomePage() {
             type="text"
             icon={<ArrowLeftOutlined />}
             onClick={() => navigate('/bdds')}
-            style={{ marginRight: 8 }}
+            className="mr-8"
           />
           Плановый график выполнения и финансирования проектов
         </span>
@@ -57,7 +57,7 @@ export function BddsIncomePage() {
         onImport={handleImport}
       />
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 48 }}>
+        <div className="page-center">
           <Spin size="large" />
         </div>
       ) : (

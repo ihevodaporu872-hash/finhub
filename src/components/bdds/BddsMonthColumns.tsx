@@ -17,13 +17,13 @@ function formatDeviation(plan: number, fact: number): string {
   return formatAmount(abs);
 }
 
-interface MonthColumnsOptions {
+interface IMonthColumnsOptions {
   onUpdateFact: (categoryId: string, month: number, amount: number) => void;
 }
 
-export function buildMonthColumns(
-  options: MonthColumnsOptions
-): ColumnsType<BddsTableRow> {
+export const buildMonthColumns = (
+  options: IMonthColumnsOptions
+): ColumnsType<BddsTableRow> => {
   const { onUpdateFact } = options;
   const cols: ColumnsType<BddsTableRow> = [];
 
@@ -120,7 +120,7 @@ export function buildMonthColumns(
   return cols;
 }
 
-export function buildTotalColumns(): ColumnsType<BddsTableRow> {
+export const buildTotalColumns = (): ColumnsType<BddsTableRow> => {
   return [
     {
       title: 'Итого',

@@ -2,16 +2,16 @@ import { Button, Space } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import { YearSelect } from '../common/YearSelect';
 
-interface Props {
+interface IProps {
   year: number;
   onYearChange: (year: number) => void;
   onSave: () => void;
   saving: boolean;
 }
 
-export const BdrToolbar = ({ year, onYearChange, onSave, saving }: Props) => {
+export const BdrToolbar = ({ year, onYearChange, onSave, saving }: IProps) => {
   return (
-    <Space style={{ marginBottom: 16 }}>
+    <Space className="mb-16">
       <YearSelect value={year} onChange={onYearChange} />
       <Button
         type="primary"

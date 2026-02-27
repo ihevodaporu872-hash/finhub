@@ -9,14 +9,14 @@ import type { ColumnsType, ColumnType } from 'antd/es/table';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
 import type { Project } from '../../types/projects';
 
-interface Props {
+interface IProps {
   projects: Project[];
   loading: boolean;
   onEdit: (project: Project) => void;
   onDelete: (id: string) => void;
 }
 
-export function ProjectsTable({ projects, loading, onEdit, onDelete }: Props) {
+export const ProjectsTable = ({ projects, loading, onEdit, onDelete }: IProps) => {
   const [searchTexts, setSearchTexts] = useState<Record<string, string>>({});
   const searchInputRef = useRef<ReturnType<typeof Input.Search> | null>(null);
 
@@ -25,7 +25,7 @@ export function ProjectsTable({ projects, loading, onEdit, onDelete }: Props) {
     placeholder: string
   ): Partial<ColumnType<Project>> => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: FilterDropdownProps) => (
-      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+      <div className="filter-dropdown" onKeyDown={(e) => e.stopPropagation()}>
         <Input
           ref={searchInputRef as never}
           placeholder={placeholder}
@@ -35,7 +35,7 @@ export function ProjectsTable({ projects, loading, onEdit, onDelete }: Props) {
             confirm();
             setSearchTexts((prev) => ({ ...prev, [dataIndex]: String(selectedKeys[0] || '') }));
           }}
-          style={{ marginBottom: 8, display: 'block' }}
+          className="filter-input"
         />
         <Space>
           <Button
@@ -46,7 +46,7 @@ export function ProjectsTable({ projects, loading, onEdit, onDelete }: Props) {
             }}
             icon={<SearchOutlined />}
             size="small"
-            style={{ width: 100 }}
+            className="w-100"
           >
             Найти
           </Button>
@@ -57,7 +57,7 @@ export function ProjectsTable({ projects, loading, onEdit, onDelete }: Props) {
               confirm();
             }}
             size="small"
-            style={{ width: 100 }}
+            className="w-100"
           >
             Сбросить
           </Button>
@@ -65,7 +65,7 @@ export function ProjectsTable({ projects, loading, onEdit, onDelete }: Props) {
       </div>
     ),
     filterIcon: (filtered: boolean) => (
-      <SearchOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+      <SearchOutlined className={filtered ? 'filter-icon-active' : ''} />
     ),
     onFilter: (value, record) => {
       const cellValue = record[dataIndex];

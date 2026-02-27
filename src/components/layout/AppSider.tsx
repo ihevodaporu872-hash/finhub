@@ -31,12 +31,12 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-interface Props {
+interface IProps {
   collapsed: boolean;
   onCollapse: (collapsed: boolean) => void;
 }
 
-export function AppSider({ collapsed, onCollapse }: Props) {
+export const AppSider = ({ collapsed, onCollapse }: IProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,10 +49,10 @@ export function AppSider({ collapsed, onCollapse }: Props) {
       onCollapse={onCollapse}
       breakpoint="lg"
       width={220}
-      style={{ minHeight: '100vh' }}
+      className="sider-container"
     >
-      <div style={{ padding: '16px', textAlign: 'center' }}>
-        <Typography.Text strong style={{ color: '#fff', fontSize: collapsed ? 14 : 20 }}>
+      <div className="sider-logo">
+        <Typography.Text strong className={`sider-logo-text ${collapsed ? 'sider-logo-text--collapsed' : 'sider-logo-text--expanded'}`}>
           {collapsed ? 'FH' : 'FinHub'}
         </Typography.Text>
       </div>

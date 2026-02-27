@@ -3,14 +3,14 @@ import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { BdrSubEntry } from '../../../types/bdr';
 import { formatAmount } from '../../../utils/formatters';
 
-interface Props {
+interface IProps {
   entries: BdrSubEntry[];
   loading: boolean;
   onEdit: (entry: BdrSubEntry) => void;
   onDelete: (id: string) => void;
 }
 
-export const BdrSubTable = ({ entries, loading, onEdit, onDelete }: Props) => {
+export const BdrSubTable = ({ entries, loading, onEdit, onDelete }: IProps) => {
   const columns = [
     {
       title: '№п/п',

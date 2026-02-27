@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Modal, Form, Input } from 'antd';
 import type { PortalUser, PortalUserFormData } from '../../types/users';
 
-interface Props {
+interface IProps {
   open: boolean;
   user: PortalUser | null;
   loading: boolean;
@@ -10,7 +10,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export function UserEditModal({ open, user, loading, onSave, onCancel }: Props) {
+export const UserEditModal = ({ open, user, loading, onSave, onCancel }: IProps) => {
   const [form] = Form.useForm<PortalUserFormData>();
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export function UserEditModal({ open, user, loading, onSave, onCancel }: Props) 
       cancelText="Отмена"
       destroyOnClose
     >
-      <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+      <Form form={form} layout="vertical" className="mt-16">
         <Form.Item
           name="email"
           label="Email"

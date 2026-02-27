@@ -22,12 +22,12 @@ function formatPercentValue(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-interface MonthColumnsOptions {
+interface IMonthColumnsOptions {
   onUpdatePlan: (rowCode: string, month: number, amount: number) => void;
   onUpdateFact: (rowCode: string, month: number, amount: number) => void;
 }
 
-export function buildBdrMonthColumns(options: MonthColumnsOptions): ColumnsType<BdrTableRow> {
+export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType<BdrTableRow> => {
   const { onUpdatePlan, onUpdateFact } = options;
   const cols: ColumnsType<BdrTableRow> = [];
 
@@ -129,7 +129,7 @@ export function buildBdrMonthColumns(options: MonthColumnsOptions): ColumnsType<
   return cols;
 }
 
-export function buildBdrTotalColumns(): ColumnsType<BdrTableRow> {
+export const buildBdrTotalColumns = (): ColumnsType<BdrTableRow> => {
   return [
     {
       title: 'Итого',

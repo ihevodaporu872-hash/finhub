@@ -9,7 +9,7 @@ import type { ColumnsType, ColumnType } from 'antd/es/table';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
 import type { PortalUser } from '../../types/users';
 
-interface Props {
+interface IProps {
   users: PortalUser[];
   loading: boolean;
   onEdit: (user: PortalUser) => void;
@@ -17,7 +17,7 @@ interface Props {
   onToggleAccess: (id: string, isActive: boolean) => void;
 }
 
-export function UsersTable({ users, loading, onEdit, onDelete, onToggleAccess }: Props) {
+export const UsersTable = ({ users, loading, onEdit, onDelete, onToggleAccess }: IProps) => {
   const [searchTexts, setSearchTexts] = useState<Record<string, string>>({});
   const searchInputRef = useRef<ReturnType<typeof Input.Search> | null>(null);
 
@@ -26,7 +26,7 @@ export function UsersTable({ users, loading, onEdit, onDelete, onToggleAccess }:
     placeholder: string
   ): Partial<ColumnType<PortalUser>> => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: FilterDropdownProps) => (
-      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+      <div className="filter-dropdown" onKeyDown={(e) => e.stopPropagation()}>
         <Input
           ref={searchInputRef as never}
           placeholder={placeholder}
@@ -36,7 +36,7 @@ export function UsersTable({ users, loading, onEdit, onDelete, onToggleAccess }:
             confirm();
             setSearchTexts((prev) => ({ ...prev, [dataIndex]: String(selectedKeys[0] || '') }));
           }}
-          style={{ marginBottom: 8, display: 'block' }}
+          className="filter-input"
         />
         <Space>
           <Button
@@ -47,7 +47,7 @@ export function UsersTable({ users, loading, onEdit, onDelete, onToggleAccess }:
             }}
             icon={<SearchOutlined />}
             size="small"
-            style={{ width: 100 }}
+            className="w-100"
           >
             Найти
           </Button>
@@ -58,7 +58,7 @@ export function UsersTable({ users, loading, onEdit, onDelete, onToggleAccess }:
               confirm();
             }}
             size="small"
-            style={{ width: 100 }}
+            className="w-100"
           >
             Сбросить
           </Button>
@@ -66,7 +66,7 @@ export function UsersTable({ users, loading, onEdit, onDelete, onToggleAccess }:
       </div>
     ),
     filterIcon: (filtered: boolean) => (
-      <SearchOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+      <SearchOutlined className={filtered ? 'filter-icon-active' : ''} />
     ),
     onFilter: (value, record) => {
       const cellValue = record[dataIndex];

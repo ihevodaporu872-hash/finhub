@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { PortalUser, PortalUserFormData } from '../types/users';
 import * as usersService from '../services/usersService';
 
-interface UseUsersResult {
+interface IUseUsersResult {
   users: PortalUser[];
   loading: boolean;
   error: string | null;
@@ -13,7 +13,7 @@ interface UseUsersResult {
   reload: () => Promise<void>;
 }
 
-export function useUsers(): UseUsersResult {
+export function useUsers(): IUseUsersResult {
   const [users, setUsers] = useState<PortalUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

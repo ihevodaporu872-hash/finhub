@@ -5,7 +5,7 @@ import * as bdrSubService from '../services/bdrSubService';
 import { BDR_ROWS, BDR_OVERHEAD_ROWS, OVERHEAD_CODES, COST_ROW_CODES } from '../utils/bdrConstants';
 import { MONTHS } from '../utils/constants';
 
-interface UseBdrResult {
+interface IUseBdrResult {
   rows: BdrTableRow[];
   loading: boolean;
   saving: boolean;
@@ -21,7 +21,7 @@ interface UseBdrResult {
 
 type EntryMap = Map<string, MonthValues>;
 
-export function useBdr(year: number): UseBdrResult {
+export function useBdr(year: number): IUseBdrResult {
   const [planMap, setPlanMap] = useState<EntryMap>(new Map());
   const [factMap, setFactMap] = useState<EntryMap>(new Map());
   const [subTotals, setSubTotals] = useState<Record<string, MonthValues>>({});

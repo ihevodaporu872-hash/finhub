@@ -4,7 +4,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { IncomeTableRow } from '../../../types/bddsIncome';
 import { formatAmount } from '../../../utils/formatters';
 
-interface Props {
+interface IProps {
   rows: IncomeTableRow[];
   monthKeys: string[];
 }
@@ -19,7 +19,7 @@ function formatMonthLabel(monthKey: string): string {
   return `${monthNames[m] || month} ${year}`;
 }
 
-export function BddsIncomeTable({ rows, monthKeys }: Props) {
+export const BddsIncomeTable = ({ rows, monthKeys }: IProps) => {
   const columns = useMemo((): ColumnsType<IncomeTableRow> => {
     const cols: ColumnsType<IncomeTableRow> = [
       {

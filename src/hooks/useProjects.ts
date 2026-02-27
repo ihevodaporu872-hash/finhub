@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Project, ProjectFormData } from '../types/projects';
 import * as projectsService from '../services/projectsService';
 
-interface UseProjectsResult {
+interface IUseProjectsResult {
   projects: Project[];
   loading: boolean;
   error: string | null;
@@ -12,7 +12,7 @@ interface UseProjectsResult {
   reload: () => Promise<void>;
 }
 
-export function useProjects(): UseProjectsResult {
+export function useProjects(): IUseProjectsResult {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

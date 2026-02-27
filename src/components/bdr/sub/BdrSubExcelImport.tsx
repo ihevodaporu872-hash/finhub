@@ -4,13 +4,13 @@ import { UploadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import type { BdrSubEntryFormData, BdrSubType } from '../../../types/bdr';
 
-interface Props {
+interface IProps {
   subType: BdrSubType;
   projectId: string | null;
   onImport: (data: BdrSubEntryFormData[]) => Promise<void>;
 }
 
-export const BdrSubExcelImport = ({ subType, projectId, onImport }: Props) => {
+export const BdrSubExcelImport = ({ subType, projectId, onImport }: IProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
@@ -77,7 +77,7 @@ export const BdrSubExcelImport = ({ subType, projectId, onImport }: Props) => {
         ref={inputRef}
         type="file"
         accept=".xlsx,.xls"
-        style={{ display: 'none' }}
+        className="hidden-input"
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) handleFile(file);

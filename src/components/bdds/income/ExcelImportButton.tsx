@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { findWorkTypeByName } from '../../../utils/workTypes';
 import type { ExcelImportData } from '../../../types/bddsIncome';
 
-interface Props {
+interface IProps {
   disabled: boolean;
   onImport: (data: ExcelImportData[]) => void;
 }
@@ -44,7 +44,7 @@ function parseMonthHeader(header: string): string | null {
   return null;
 }
 
-export function ExcelImportButton({ disabled, onImport }: Props) {
+export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,7 +140,7 @@ export function ExcelImportButton({ disabled, onImport }: Props) {
         ref={fileInputRef}
         type="file"
         accept=".xlsx,.xls"
-        style={{ display: 'none' }}
+        className="hidden-input"
         onChange={handleFileChange}
       />
       <Button

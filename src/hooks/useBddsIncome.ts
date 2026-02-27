@@ -5,7 +5,7 @@ import * as bddsIncomeService from '../services/bddsIncomeService';
 import * as projectsService from '../services/projectsService';
 import { WORK_TYPES, SMR_CODES } from '../utils/workTypes';
 
-interface UseBddsIncomeResult {
+interface IUseBddsIncomeResult {
   rows: IncomeTableRow[];
   monthKeys: string[];
   projects: Project[];
@@ -20,7 +20,7 @@ interface UseBddsIncomeResult {
   reload: () => Promise<void>;
 }
 
-export function useBddsIncome(): UseBddsIncomeResult {
+export function useBddsIncome(): IUseBddsIncomeResult {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [entries, setEntries] = useState<Array<{ project_id: string; work_type_code: string; month_key: string; amount: number }>>([]);

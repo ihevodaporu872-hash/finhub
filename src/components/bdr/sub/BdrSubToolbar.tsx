@@ -6,7 +6,7 @@ import type { Project } from '../../../types/projects';
 import { BdrSubExcelImport } from './BdrSubExcelImport';
 import type { BdrSubEntryFormData } from '../../../types/bdr';
 
-interface Props {
+interface IProps {
   subType: BdrSubType;
   projects: Project[];
   entries: BdrSubEntry[];
@@ -24,7 +24,7 @@ export const BdrSubToolbar = ({
   onProjectChange,
   onAdd,
   onImport,
-}: Props) => {
+}: IProps) => {
   const handleExport = () => {
     const exportData = entries.map((e, i) => ({
       '№п/п': i + 1,
@@ -41,11 +41,11 @@ export const BdrSubToolbar = ({
   };
 
   return (
-    <Space style={{ marginBottom: 16 }} wrap>
+    <Space className="mb-16" wrap>
       <Select
         value={selectedProjectId}
         onChange={onProjectChange}
-        style={{ width: 300 }}
+        className="select-project-wide"
         allowClear
         placeholder="Все проекты"
       >

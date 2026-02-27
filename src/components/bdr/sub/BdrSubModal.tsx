@@ -7,13 +7,13 @@ import { BdrSubToolbar } from './BdrSubToolbar';
 import { BdrSubTable } from './BdrSubTable';
 import { BdrSubEntryForm } from './BdrSubEntryForm';
 
-interface Props {
+interface IProps {
   subType: BdrSubType;
   year: number;
   onClose: () => void;
 }
 
-export const BdrSubModal = ({ subType, year, onClose }: Props) => {
+export const BdrSubModal = ({ subType, year, onClose }: IProps) => {
   const {
     entries,
     projects,
@@ -76,7 +76,7 @@ export const BdrSubModal = ({ subType, year, onClose }: Props) => {
       width={1000}
       destroyOnHidden
     >
-      {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
+      {error && <Alert type="error" message={error} className="alert-mb" />}
       <BdrSubToolbar
         subType={subType}
         projects={projects}

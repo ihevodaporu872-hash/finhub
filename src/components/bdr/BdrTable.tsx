@@ -4,7 +4,7 @@ import { RightOutlined, DownOutlined } from '@ant-design/icons';
 import type { BdrTableRow, BdrSubType } from '../../types/bdr';
 import { buildBdrMonthColumns, buildBdrTotalColumns } from './BdrMonthColumns';
 
-interface Props {
+interface IProps {
   rows: BdrTableRow[];
   overheadExpanded: boolean;
   onToggleOverhead: () => void;
@@ -13,7 +13,7 @@ interface Props {
   onOpenSub: (subType: BdrSubType) => void;
 }
 
-export const BdrTable = ({ rows, overheadExpanded, onToggleOverhead, onUpdatePlan, onUpdateFact, onOpenSub }: Props) => {
+export const BdrTable = ({ rows, overheadExpanded, onToggleOverhead, onUpdatePlan, onUpdateFact, onOpenSub }: IProps) => {
   const columns = useMemo(() => {
     const nameCol = {
       title: 'Статья',

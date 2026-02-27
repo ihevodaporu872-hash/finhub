@@ -4,7 +4,7 @@ import type { Project, ProjectFormData } from '../../types/projects';
 
 const { TextArea } = Input;
 
-interface Props {
+interface IProps {
   open: boolean;
   project: Project | null;
   loading: boolean;
@@ -12,7 +12,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export function ProjectEditModal({ open, project, loading, onSave, onCancel }: Props) {
+export const ProjectEditModal = ({ open, project, loading, onSave, onCancel }: IProps) => {
   const [form] = Form.useForm<ProjectFormData>();
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export function ProjectEditModal({ open, project, loading, onSave, onCancel }: P
       cancelText="Отмена"
       destroyOnClose
     >
-      <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+      <Form form={form} layout="vertical" className="mt-16">
         <Form.Item
           name="code"
           label="Код"

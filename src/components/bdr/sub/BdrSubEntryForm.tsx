@@ -3,7 +3,7 @@ import type { BdrSubEntry, BdrSubEntryFormData, BdrSubType } from '../../../type
 import type { Project } from '../../../types/projects';
 import dayjs from 'dayjs';
 
-interface Props {
+interface IProps {
   visible: boolean;
   subType: BdrSubType;
   projects: Project[];
@@ -13,7 +13,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export const BdrSubEntryForm = ({ visible, subType, projects, editingEntry, selectedProjectId, onSave, onCancel }: Props) => {
+export const BdrSubEntryForm = ({ visible, subType, projects, editingEntry, selectedProjectId, onSave, onCancel }: IProps) => {
   const [form] = Form.useForm();
 
   const handleOk = async () => {
@@ -78,7 +78,7 @@ export const BdrSubEntryForm = ({ visible, subType, projects, editingEntry, sele
           label="Дата"
           rules={[{ required: true, message: 'Укажите дату' }]}
         >
-          <DatePicker format="DD.MM.YYYY" style={{ width: '100%' }} />
+          <DatePicker format="DD.MM.YYYY" className="w-full" />
         </Form.Item>
         <Form.Item name="description" label="Содержание">
           <Input.TextArea rows={2} />
@@ -89,7 +89,7 @@ export const BdrSubEntryForm = ({ visible, subType, projects, editingEntry, sele
           rules={[{ required: true, message: 'Укажите сумму' }]}
         >
           <InputNumber
-            style={{ width: '100%' }}
+            className="w-full"
             formatter={(val) => val ? `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
             parser={(val) => val ? Number(val.replace(/\s/g, '')) : 0}
           />

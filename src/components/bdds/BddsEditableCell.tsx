@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { InputNumber } from 'antd';
 import { formatAmount } from '../../utils/formatters';
 
-interface Props {
+interface IProps {
   value: number | undefined;
   isCalculated?: boolean;
   onSave: (value: number) => void;
 }
 
-export function BddsEditableCell({ value, isCalculated, onSave }: Props) {
+export const BddsEditableCell = ({ value, isCalculated, onSave }: IProps) => {
   const [editing, setEditing] = useState(false);
   const [inputValue, setInputValue] = useState<number | null>(value ?? null);
 
@@ -36,7 +36,7 @@ export function BddsEditableCell({ value, isCalculated, onSave }: Props) {
           onSave(inputValue ?? 0);
         }}
         size="small"
-        style={{ width: '100%' }}
+        className="w-full"
         controls={false}
         formatter={(val) => val ? `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
         parser={(val) => val ? Number(val.replace(/\s/g, '')) : 0}
@@ -52,7 +52,7 @@ export function BddsEditableCell({ value, isCalculated, onSave }: Props) {
         setInputValue(value ?? null);
         setEditing(true);
       }}
-      style={{ cursor: 'pointer', minHeight: 22, padding: '0 4px' }}
+      className="editable-cell-view"
     >
       <span className={value !== undefined && value < 0 ? 'amount-negative' : ''}>
         {display || '\u00A0'}

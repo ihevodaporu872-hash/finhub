@@ -4,7 +4,7 @@ import { useBdds } from '../../hooks/useBdds';
 import { BddsToolbar } from './BddsToolbar';
 import { BddsTable } from './BddsTable';
 
-export function BddsPage() {
+export const BddsPage = () => {
   const [year, setYear] = useState(new Date().getFullYear());
   const { sections, loading, saving, error, updateFactEntry, saveAll } = useBdds(year);
 
@@ -30,7 +30,7 @@ export function BddsPage() {
         saving={saving}
       />
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 48 }}>
+        <div className="page-center">
           <Spin size="large" />
         </div>
       ) : (

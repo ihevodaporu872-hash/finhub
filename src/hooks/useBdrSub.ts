@@ -4,7 +4,7 @@ import type { Project } from '../types/projects';
 import * as bdrSubService from '../services/bdrSubService';
 import * as projectsService from '../services/projectsService';
 
-interface UseBdrSubResult {
+interface IUseBdrSubResult {
   entries: BdrSubEntry[];
   projects: Project[];
   selectedProjectId: string | null;
@@ -18,7 +18,7 @@ interface UseBdrSubResult {
   reload: () => Promise<void>;
 }
 
-export function useBdrSub(subType: BdrSubType, year: number): UseBdrSubResult {
+export function useBdrSub(subType: BdrSubType, year: number): IUseBdrSubResult {
   const [entries, setEntries] = useState<BdrSubEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);

@@ -45,7 +45,7 @@ src/
 - Компоненты: `PascalCase` (например, `BddsTable.tsx`)
 - Хуки: `camelCase` с префиксом `use` (например, `useBdds.ts`)
 - Сервисы: `camelCase` с суффиксом `Service` (например, `bddsService.ts`)
-- Типы: `PascalCase` (например, `BddsCategory`, `PortalUser`)
+- Типы/Интерфейсы: `PascalCase` с префиксом `I` для интерфейсов (например, `IButtonProps`, `BddsCategory`)
 - Утилиты: `camelCase` (например, `formatters.ts`)
 - Константы: `UPPER_SNAKE_CASE` (например, `SECTION_ORDER`)
 - Роуты: `kebab-case` (например, `/bdds/income`, `/admin/users`)

@@ -1,10 +1,10 @@
 import { Result } from 'antd';
 
-interface Props {
+interface IProps {
   title: string;
 }
 
-export function PagePlaceholder({ title }: Props) {
+export const PagePlaceholder = ({ title }: IProps) => {
   return (
     <Result
       status="info"

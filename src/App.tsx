@@ -7,7 +7,7 @@ import { AdminUsersPageWrapper } from './pages/AdminUsersPageWrapper';
 import { AdminProjectsPageWrapper } from './pages/AdminProjectsPageWrapper';
 import { BddsIncomePageWrapper } from './pages/BddsIncomePageWrapper';
 
-export default function App() {
+export const App = () => {
   return (
     <BrowserRouter>
       <Routes>

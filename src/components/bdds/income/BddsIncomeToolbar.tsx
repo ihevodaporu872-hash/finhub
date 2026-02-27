@@ -3,31 +3,31 @@ import type { Project } from '../../../types/projects';
 import type { ExcelImportData } from '../../../types/bddsIncome';
 import { ExcelImportButton } from './ExcelImportButton';
 
-interface Props {
+interface IProps {
   projects: Project[];
   selectedProjectId: string | null;
   onProjectChange: (id: string | null) => void;
   onImport: (data: ExcelImportData[]) => void;
 }
 
-export function BddsIncomeToolbar({
+export const BddsIncomeToolbar = ({
   projects,
   selectedProjectId,
   onProjectChange,
   onImport,
-}: Props) {
+}: IProps) => {
   const options = [
     { value: '__all__', label: 'Все проекты' },
     ...projects.map((p) => ({ value: p.id, label: p.name })),
   ];
 
   return (
-    <Space style={{ marginBottom: 16 }} wrap>
+    <Space className="mb-16" wrap>
       <Select
         value={selectedProjectId ?? '__all__'}
         onChange={(val) => onProjectChange(val === '__all__' ? null : val)}
         options={options}
-        style={{ minWidth: 250 }}
+        className="select-project"
         placeholder="Выберите проект"
       />
       <ExcelImportButton

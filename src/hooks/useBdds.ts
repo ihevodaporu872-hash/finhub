@@ -5,7 +5,7 @@ import * as bddsIncomeService from '../services/bddsIncomeService';
 import { SECTION_ORDER, SECTION_NAMES, MONTHS } from '../utils/constants';
 import { calculateNetCashFlow, calculateRowTotal } from '../utils/calculations';
 
-interface UseBddsResult {
+interface IUseBddsResult {
   sections: BddsSection[];
   loading: boolean;
   saving: boolean;
@@ -14,7 +14,7 @@ interface UseBddsResult {
   saveAll: () => Promise<void>;
 }
 
-export function useBdds(year: number): UseBddsResult {
+export function useBdds(year: number): IUseBddsResult {
   const [sections, setSections] = useState<BddsSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
