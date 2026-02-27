@@ -1,12 +1,8 @@
-import { Layout, Button, Typography, Space } from 'antd';
-import { LogoutOutlined } from '@ant-design/icons';
-import { useAuth } from '../../hooks/useAuth';
+import { Layout, Typography } from 'antd';
 
 const { Header } = Layout;
 
 export function AppHeader() {
-  const { user, signOut } = useAuth();
-
   return (
     <Header style={{
       background: '#fff',
@@ -19,12 +15,6 @@ export function AppHeader() {
       <Typography.Title level={4} style={{ margin: 0 }}>
         Финансовый портал
       </Typography.Title>
-      <Space>
-        <Typography.Text type="secondary">{user?.email}</Typography.Text>
-        <Button icon={<LogoutOutlined />} onClick={signOut}>
-          Выйти
-        </Button>
-      </Space>
     </Header>
   );
 }
