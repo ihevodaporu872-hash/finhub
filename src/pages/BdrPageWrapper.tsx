@@ -1,5 +1,5 @@
-import { PagePlaceholder } from '../components/common/PagePlaceholder';
+import { BdrPage } from '../components/bdr/BdrPage';
 
 export function BdrPageWrapper() {
-  return <PagePlaceholder title="БДР — Бюджет Доходов и Расходов" />;
+  return <BdrPage />;
 }

@@ -69,3 +69,51 @@ body {
   opacity: 0.45;
   background-color: #fafafa !important;
 }
+
+/* БДР таблица — заголовок */
+.bdr-header-row td {
+  background-color: #f0f0f0 !important;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* БДР — полужирные строки (Выручка, Себестоимость) */
+.bdr-semibold-row td {
+  font-weight: 600;
+  background-color: #f9f9f9 !important;
+}
+
+/* БДР — вычисляемые строки */
+.bdr-calculated-row td {
+  background-color: #e6f7ff !important;
+  font-style: italic;
+}
+
+/* БДР — кликабельные ячейки */
+.bdr-clickable-name {
+  color: #1677ff;
+  cursor: pointer;
+}
+.bdr-clickable-name:hover {
+  text-decoration: underline;
+}
+
+/* БДР — полужирное имя */
+.bdr-semibold-name {
+  font-weight: 600;
+}
+
+/* БДР — строки накладных расходов (под-элементы) */
+.bdr-overhead-item td {
+  font-size: 12px;
+}
+.bdr-overhead-indent {
+  padding-left: 24px;
+}
+
+/* Адаптивность БДР */
+@media (max-width: 768px) {
+  .bdr-overhead-indent {
+    padding-left: 12px;
+  }
+}
