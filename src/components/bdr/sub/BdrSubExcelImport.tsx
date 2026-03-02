@@ -10,40 +10,90 @@ interface IProps {
   onImport: (data: BdrSubEntryFormData[]) => Promise<void>;
 }
 
+const COLUMN_ALIASES: Record<string, string[]> = {
+  company: ['фирма', 'company', 'компания', 'организация', 'контрагент'],
+  description: ['содержание', 'description', 'описание', 'наименование', 'назначение'],
+  amount: ['сумма', 'amount', 'стоимость', 'итого'],
+  date: ['дата', 'date'],
+};
+
+const findColumnValue = (row: Record<string, unknown>, aliases: string[]): unknown => {
+  const keys = Object.keys(row);
+  for (const alias of aliases) {
+    const found = keys.find((k) => k.trim().toLowerCase() === alias);
+    if (found !== undefined) return row[found];
+  }
+  return undefined;
+};
+
+const parseAmount = (raw: unknown): number => {
+  if (typeof raw === 'number') return raw;
+  if (typeof raw === 'string') {
+    const cleaned = raw.replace(/\s/g, '').replace(',', '.');
+    const num = Number(cleaned);
+    return isNaN(num) ? 0 : num;
+  }
+  return 0;
+};
+
+const parseDate = (raw: unknown): string => {
+  if (!raw) return '';
+
+  if (raw instanceof Date) {
+    return raw.toISOString().split('T')[0];
+  }
+
+  if (typeof raw === 'number') {
+    const epoch = new Date((raw - 25569) * 86400 * 1000);
+    if (!isNaN(epoch.getTime())) {
+      return epoch.toISOString().split('T')[0];
+    }
+    return '';
+  }
+
+  if (typeof raw === 'string') {
+    const dotParts = raw.split('.');
+    if (dotParts.length === 3 && dotParts[0].length <= 2 && dotParts[1].length <= 2) {
+      const y = dotParts[2].length === 2 ? `20${dotParts[2]}` : dotParts[2];
+      return `${y}-${dotParts[1].padStart(2, '0')}-${dotParts[0].padStart(2, '0')}`;
+    }
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  }
+
+  return '';
+};
+
 export const BdrSubExcelImport = ({ subType, projectId, onImport }: IProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
 
+      if (jsonData.length === 0) {
+        message.warning('Файл пуст или не содержит данных');
+        return;
+      }
+
       const entries: BdrSubEntryFormData[] = [];
+      let skipped = 0;
 
       for (const row of jsonData) {
-        const company = String(row['Фирма'] || row['Company'] || '');
-        const description = String(row['Содержание'] || row['Description'] || '');
-        const amount = Number(row['Сумма'] || row['Amount'] || 0);
+        const company = String(findColumnValue(row, COLUMN_ALIASES.company) ?? '');
+        const description = String(findColumnValue(row, COLUMN_ALIASES.description) ?? '');
+        const amount = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount));
+        const entryDate = parseDate(findColumnValue(row, COLUMN_ALIASES.date));
 
-        let entryDate = '';
-        const rawDate = row['Дата'] || row['Date'];
-        if (rawDate instanceof Date) {
-          entryDate = rawDate.toISOString().split('T')[0];
-        } else if (typeof rawDate === 'number') {
-          const d = XLSX.SSF.parse_date_code(rawDate);
-          entryDate = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
-        } else if (typeof rawDate === 'string') {
-          const parts = rawDate.split('.');
-          if (parts.length === 3) {
-            entryDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-          } else {
-            entryDate = rawDate;
-          }
+        if (!entryDate || !amount) {
+          skipped++;
+          continue;
         }
-
-        if (!entryDate || !amount) continue;
 
         entries.push({
           sub_type: subType,
@@ -56,13 +106,18 @@ export const BdrSubExcelImport = ({ subType, projectId, onImport }: IProps) => {
       }
 
       if (entries.length === 0) {
-        message.warning('Не найдено записей для импорта');
+        const cols = Object.keys(jsonData[0]).join(', ');
+        message.warning(`Не найдено записей. Колонки в файле: ${cols}`);
         return;
       }
 
       await onImport(entries);
-      message.success(`Импортировано ${entries.length} записей`);
-    } catch {
+      const msg = skipped > 0
+        ? `Импортировано ${entries.length} записей (пропущено: ${skipped})`
+        : `Импортировано ${entries.length} записей`;
+      message.success(msg);
+    } catch (err) {
+      console.error('Excel import error:', err);
       message.error('Ошибка импорта файла');
     }
 
