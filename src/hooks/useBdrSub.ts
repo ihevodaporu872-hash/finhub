@@ -39,9 +39,7 @@ export function useBdrSub(subType: BdrSubType, year: number): IUseBdrSubResult {
         projectsService.getProjects(),
         bdrSubService.getSubEntries(
           subType,
-          selectedProjectId ?? undefined,
-          year,
-          selectedMonth ?? undefined
+          selectedProjectId ?? undefined
         ),
       ]);
 
@@ -52,7 +50,7 @@ export function useBdrSub(subType: BdrSubType, year: number): IUseBdrSubResult {
     } finally {
       setLoading(false);
     }
-  }, [subType, year, selectedProjectId, selectedMonth]);
+  }, [subType, selectedProjectId]);
 
   useEffect(() => {
     loadData();
