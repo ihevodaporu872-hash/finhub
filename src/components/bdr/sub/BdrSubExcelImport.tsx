@@ -7,11 +7,14 @@ import type { BdrSubEntryFormData, BdrSubType } from '../../../types/bdr';
 interface IProps {
   subType: BdrSubType;
   projectId: string | null;
+  selectedMonth: number | null;
+  year: number;
   onImport: (data: BdrSubEntryFormData[]) => Promise<void>;
 }
 
 const COLUMN_ALIASES: Record<string, string[]> = {
   company: ['фирма', 'company', 'компания', 'организация', 'контрагент'],
+  department: ['отдел/сотрудник', 'отдел', 'сотрудник', 'department', 'employee'],
   description: ['содержание', 'description', 'описание', 'наименование', 'назначение'],
   amount: ['сумма', 'amount', 'стоимость', 'итого'],
   date: ['дата', 'date'],
@@ -38,19 +41,12 @@ const parseAmount = (raw: unknown): number => {
 
 const parseDate = (raw: unknown): string => {
   if (!raw) return '';
-
-  if (raw instanceof Date) {
-    return raw.toISOString().split('T')[0];
-  }
-
+  if (raw instanceof Date) return raw.toISOString().split('T')[0];
   if (typeof raw === 'number') {
     const epoch = new Date((raw - 25569) * 86400 * 1000);
-    if (!isNaN(epoch.getTime())) {
-      return epoch.toISOString().split('T')[0];
-    }
+    if (!isNaN(epoch.getTime())) return epoch.toISOString().split('T')[0];
     return '';
   }
-
   if (typeof raw === 'string') {
     const dotParts = raw.split('.');
     if (dotParts.length === 3 && dotParts[0].length <= 2 && dotParts[1].length <= 2) {
@@ -58,11 +54,8 @@ const parseDate = (raw: unknown): string => {
       return `${y}-${dotParts[1].padStart(2, '0')}-${dotParts[0].padStart(2, '0')}`;
     }
     const d = new Date(raw);
-    if (!isNaN(d.getTime())) {
-      return d.toISOString().split('T')[0];
-    }
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
   }
-
   return '';
 };
 
@@ -71,8 +64,14 @@ interface IFailedRow {
   reason: string;
 }
 
-export const BdrSubExcelImport = ({ subType, projectId, onImport }: IProps) => {
+export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onImport }: IProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const isOverheadLabor = subType === 'overhead_labor';
+
+  const getEntryDate = (): string => {
+    const month = selectedMonth ?? new Date().getMonth() + 1;
+    return `${year}-${String(month).padStart(2, '0')}-01`;
+  };
 
   const handleFile = async (file: File) => {
     try {
@@ -91,33 +90,47 @@ export const BdrSubExcelImport = ({ subType, projectId, onImport }: IProps) => {
 
       for (let i = 0; i < jsonData.length; i++) {
         const row = jsonData[i];
-        const rowNum = i + 2; // +2: строка 1 — заголовок
-        const company = String(findColumnValue(row, COLUMN_ALIASES.company) ?? '');
-        const description = String(findColumnValue(row, COLUMN_ALIASES.description) ?? '');
-        const amount = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount));
-        const entryDate = parseDate(findColumnValue(row, COLUMN_ALIASES.date));
+        const rowNum = i + 2;
 
-        if (!entryDate && !amount) {
-          failedRows.push({ rowNum, reason: 'Не распознаны дата и сумма' });
-          continue;
-        }
-        if (!entryDate) {
-          failedRows.push({ rowNum, reason: 'Не удалось распознать дату' });
-          continue;
-        }
+        const amount = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount));
+
         if (!amount) {
           failedRows.push({ rowNum, reason: 'Сумма равна нулю или не распознана' });
           continue;
         }
 
-        entries.push({
-          sub_type: subType,
-          project_id: projectId,
-          entry_date: entryDate,
-          company,
-          description,
-          amount,
-        });
+        if (isOverheadLabor) {
+          const department = String(
+            findColumnValue(row, COLUMN_ALIASES.department) ??
+            findColumnValue(row, COLUMN_ALIASES.company) ?? ''
+          );
+          entries.push({
+            sub_type: subType,
+            project_id: projectId,
+            entry_date: getEntryDate(),
+            company: department,
+            description: '',
+            amount,
+          });
+        } else {
+          const company = String(findColumnValue(row, COLUMN_ALIASES.company) ?? '');
+          const description = String(findColumnValue(row, COLUMN_ALIASES.description) ?? '');
+          const entryDate = parseDate(findColumnValue(row, COLUMN_ALIASES.date));
+
+          if (!entryDate) {
+            failedRows.push({ rowNum, reason: 'Не удалось распознать дату' });
+            continue;
+          }
+
+          entries.push({
+            sub_type: subType,
+            project_id: projectId,
+            entry_date: entryDate,
+            company,
+            description,
+            amount,
+          });
+        }
       }
 
       if (entries.length === 0) {

@@ -9,26 +9,59 @@ interface IProps {
   projects: Project[];
   editingEntry: BdrSubEntry | null;
   selectedProjectId: string | null;
+  selectedMonth: number | null;
+  year: number;
   onSave: (data: BdrSubEntryFormData) => Promise<void>;
   onCancel: () => void;
 }
 
-export const BdrSubEntryForm = ({ visible, subType, projects, editingEntry, selectedProjectId, onSave, onCancel }: IProps) => {
+export const BdrSubEntryForm = ({
+  visible,
+  subType,
+  projects,
+  editingEntry,
+  selectedProjectId,
+  selectedMonth,
+  year,
+  onSave,
+  onCancel,
+}: IProps) => {
   const [form] = Form.useForm();
+  const isOverheadLabor = subType === 'overhead_labor';
+
+  const getEntryDate = (): string => {
+    const month = selectedMonth ?? new Date().getMonth() + 1;
+    return `${year}-${String(month).padStart(2, '0')}-01`;
+  };
 
   const handleOk = async () => {
     const values = await form.validateFields();
     const data: BdrSubEntryFormData = {
       sub_type: subType,
       project_id: values.project_id || null,
-      entry_date: values.entry_date.format('YYYY-MM-DD'),
+      entry_date: isOverheadLabor
+        ? getEntryDate()
+        : values.entry_date.format('YYYY-MM-DD'),
       company: values.company || '',
-      description: values.description || '',
+      description: isOverheadLabor ? '' : (values.description || ''),
       amount: values.amount || 0,
     };
     await onSave(data);
     form.resetFields();
   };
+
+  const initialValues = editingEntry
+    ? {
+        project_id: editingEntry.project_id,
+        entry_date: isOverheadLabor ? undefined : dayjs(editingEntry.entry_date),
+        company: editingEntry.company,
+        description: editingEntry.description,
+        amount: editingEntry.amount,
+      }
+    : {
+        project_id: selectedProjectId,
+        entry_date: isOverheadLabor ? undefined : dayjs(),
+      };
 
   return (
     <Modal
@@ -43,24 +76,7 @@ export const BdrSubEntryForm = ({ visible, subType, projects, editingEntry, sele
       cancelText="Отмена"
       destroyOnHidden
     >
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={
-          editingEntry
-            ? {
-                project_id: editingEntry.project_id,
-                entry_date: dayjs(editingEntry.entry_date),
-                company: editingEntry.company,
-                description: editingEntry.description,
-                amount: editingEntry.amount,
-              }
-            : {
-                project_id: selectedProjectId,
-                entry_date: dayjs(),
-              }
-        }
-      >
+      <Form form={form} layout="vertical" initialValues={initialValues}>
         <Form.Item name="project_id" label="Проект">
           <Select allowClear placeholder="Выберите проект">
             {projects.map((p) => (
@@ -70,19 +86,26 @@ export const BdrSubEntryForm = ({ visible, subType, projects, editingEntry, sele
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name="company" label="Фирма">
+        <Form.Item
+          name="company"
+          label={isOverheadLabor ? 'Отдел/Сотрудник' : 'Фирма'}
+        >
           <Input />
         </Form.Item>
-        <Form.Item
-          name="entry_date"
-          label="Дата"
-          rules={[{ required: true, message: 'Укажите дату' }]}
-        >
-          <DatePicker format="DD.MM.YYYY" className="w-full" />
-        </Form.Item>
-        <Form.Item name="description" label="Содержание">
-          <Input.TextArea rows={2} />
-        </Form.Item>
+        {!isOverheadLabor && (
+          <Form.Item
+            name="entry_date"
+            label="Дата"
+            rules={[{ required: true, message: 'Укажите дату' }]}
+          >
+            <DatePicker format="DD.MM.YYYY" className="w-full" />
+          </Form.Item>
+        )}
+        {!isOverheadLabor && (
+          <Form.Item name="description" label="Содержание">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        )}
         <Form.Item
           name="amount"
           label="Сумма"

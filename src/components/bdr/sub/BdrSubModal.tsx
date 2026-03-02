@@ -19,6 +19,8 @@ export const BdrSubModal = ({ subType, year, onClose }: IProps) => {
     projects,
     selectedProjectId,
     setSelectedProjectId,
+    selectedMonth,
+    setSelectedMonth,
     loading,
     error,
     createEntry,
@@ -82,11 +84,15 @@ export const BdrSubModal = ({ subType, year, onClose }: IProps) => {
         projects={projects}
         entries={entries}
         selectedProjectId={selectedProjectId}
+        selectedMonth={selectedMonth}
         onProjectChange={setSelectedProjectId}
+        onMonthChange={setSelectedMonth}
         onAdd={handleAdd}
         onImport={importFromExcel}
+        year={year}
       />
       <BdrSubTable
+        subType={subType}
         entries={entries}
         loading={loading}
         onEdit={handleEdit}
@@ -98,6 +104,8 @@ export const BdrSubModal = ({ subType, year, onClose }: IProps) => {
         projects={projects}
         editingEntry={editingEntry}
         selectedProjectId={selectedProjectId}
+        selectedMonth={selectedMonth}
+        year={year}
         onSave={handleSave}
         onCancel={() => {
           setFormVisible(false);

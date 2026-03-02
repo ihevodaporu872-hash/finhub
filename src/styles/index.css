@@ -192,6 +192,10 @@ body {
   width: 300px;
 }
 
+.select-month {
+  width: 160px;
+}
+
 /* Центрированный контент загрузки */
 .page-center {
   text-align: center;

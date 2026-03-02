@@ -9,6 +9,8 @@ interface IUseBdrSubResult {
   projects: Project[];
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
+  selectedMonth: number | null;
+  setSelectedMonth: (month: number | null) => void;
   loading: boolean;
   error: string | null;
   createEntry: (data: BdrSubEntryFormData) => Promise<void>;
@@ -22,6 +24,9 @@ export function useBdrSub(subType: BdrSubType, year: number): IUseBdrSubResult {
   const [entries, setEntries] = useState<BdrSubEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(
+    subType === 'overhead_labor' ? new Date().getMonth() + 1 : null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +37,12 @@ export function useBdrSub(subType: BdrSubType, year: number): IUseBdrSubResult {
 
       const [projectsData, entriesData] = await Promise.all([
         projectsService.getProjects(),
-        bdrSubService.getSubEntries(subType, selectedProjectId ?? undefined, year),
+        bdrSubService.getSubEntries(
+          subType,
+          selectedProjectId ?? undefined,
+          year,
+          selectedMonth ?? undefined
+        ),
       ]);
 
       setProjects(projectsData.filter((p) => p.is_active));
@@ -42,7 +52,7 @@ export function useBdrSub(subType: BdrSubType, year: number): IUseBdrSubResult {
     } finally {
       setLoading(false);
     }
-  }, [subType, year, selectedProjectId]);
+  }, [subType, year, selectedProjectId, selectedMonth]);
 
   useEffect(() => {
     loadData();
@@ -85,6 +95,8 @@ export function useBdrSub(subType: BdrSubType, year: number): IUseBdrSubResult {
     projects,
     selectedProjectId,
     setSelectedProjectId,
+    selectedMonth,
+    setSelectedMonth,
     loading,
     error,
     createEntry,

@@ -1,17 +1,20 @@
 import { Button, Select, Space } from 'antd';
 import { PlusOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
-import type { BdrSubEntry, BdrSubType } from '../../../types/bdr';
+import type { BdrSubEntry, BdrSubType, BdrSubEntryFormData } from '../../../types/bdr';
 import type { Project } from '../../../types/projects';
 import { BdrSubExcelImport } from './BdrSubExcelImport';
-import type { BdrSubEntryFormData } from '../../../types/bdr';
+import { MONTHS } from '../../../utils/constants';
 
 interface IProps {
   subType: BdrSubType;
   projects: Project[];
   entries: BdrSubEntry[];
   selectedProjectId: string | null;
+  selectedMonth: number | null;
+  year: number;
   onProjectChange: (id: string | null) => void;
+  onMonthChange: (month: number | null) => void;
   onAdd: () => void;
   onImport: (data: BdrSubEntryFormData[]) => Promise<void>;
 }
@@ -21,27 +24,56 @@ export const BdrSubToolbar = ({
   projects,
   entries,
   selectedProjectId,
+  selectedMonth,
+  year,
   onProjectChange,
+  onMonthChange,
   onAdd,
   onImport,
 }: IProps) => {
+  const isOverheadLabor = subType === 'overhead_labor';
+
   const handleExport = () => {
-    const exportData = entries.map((e, i) => ({
-      '№п/п': i + 1,
-      'Фирма': e.company,
-      'Дата': new Date(e.entry_date).toLocaleDateString('ru-RU'),
-      'Содержание': e.description,
-      'Сумма': e.amount,
-    }));
+    const exportData = isOverheadLabor
+      ? entries.map((e, i) => ({
+          '№п/п': i + 1,
+          'Отдел/Сотрудник': e.company,
+          'Сумма': e.amount,
+        }))
+      : entries.map((e, i) => ({
+          '№п/п': i + 1,
+          'Фирма': e.company,
+          'Дата': new Date(e.entry_date).toLocaleDateString('ru-RU'),
+          'Содержание': e.description,
+          'Сумма': e.amount,
+        }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Данные');
-    XLSX.writeFile(wb, `export_${subType}.xlsx`);
+    const monthSuffix = isOverheadLabor && selectedMonth
+      ? `_${String(selectedMonth).padStart(2, '0')}`
+      : '';
+    XLSX.writeFile(wb, `export_${subType}${monthSuffix}_${year}.xlsx`);
   };
 
   return (
     <Space className="mb-16" wrap>
+      {isOverheadLabor && (
+        <Select
+          value={selectedMonth}
+          onChange={onMonthChange}
+          className="select-month"
+          allowClear
+          placeholder="Все месяцы"
+        >
+          {MONTHS.map((m) => (
+            <Select.Option key={m.key} value={m.key}>
+              {m.full}
+            </Select.Option>
+          ))}
+        </Select>
+      )}
       <Select
         value={selectedProjectId}
         onChange={onProjectChange}
@@ -61,6 +93,8 @@ export const BdrSubToolbar = ({
       <BdrSubExcelImport
         subType={subType}
         projectId={selectedProjectId}
+        selectedMonth={selectedMonth}
+        year={year}
         onImport={onImport}
       />
       <Button icon={<DownloadOutlined />} onClick={handleExport}>

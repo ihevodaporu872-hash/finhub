@@ -4,7 +4,8 @@ import type { BdrSubEntry, BdrSubEntryFormData, BdrSubType } from '../types/bdr'
 export async function getSubEntries(
   subType: BdrSubType,
   projectId?: string,
-  year?: number
+  year?: number,
+  month?: number
 ): Promise<BdrSubEntry[]> {
   let query = supabase
     .from('bdr_sub_entries')
@@ -16,9 +17,16 @@ export async function getSubEntries(
     query = query.eq('project_id', projectId);
   }
   if (year) {
-    query = query
-      .gte('entry_date', `${year}-01-01`)
-      .lte('entry_date', `${year}-12-31`);
+    if (month) {
+      const m = String(month).padStart(2, '0');
+      query = query
+        .gte('entry_date', `${year}-${m}-01`)
+        .lte('entry_date', `${year}-${m}-31`);
+    } else {
+      query = query
+        .gte('entry_date', `${year}-01-01`)
+        .lte('entry_date', `${year}-12-31`);
+    }
   }
 
   const { data, error } = await query;
