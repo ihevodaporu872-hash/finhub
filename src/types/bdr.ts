@@ -1,6 +1,6 @@
 export type BdrEntryType = 'plan' | 'fact';
 
-export type BdrSubType = 'materials' | 'labor' | 'subcontract' | 'design' | 'rental';
+export type BdrSubType = 'materials' | 'labor' | 'subcontract' | 'design' | 'rental' | 'overhead_labor';
 
 export interface BdrEntry {
   id: string;

@@ -44,7 +44,7 @@ export function useBdr(year: number): IUseBdrResult {
       setError(null);
       dirtyRef.current.clear();
 
-      const [planEntries, factEntries, smr, matTotals, laborTotals, subTotals, designTotals, rentalTotals] =
+      const [planEntries, factEntries, smr, matTotals, laborTotals, subTotals, designTotals, rentalTotals, overheadLaborTotals] =
         await Promise.all([
           bdrService.getEntries(year, 'plan'),
           bdrService.getEntries(year, 'fact'),
@@ -54,6 +54,7 @@ export function useBdr(year: number): IUseBdrResult {
           bdrSubService.getSubTotalsByMonth('subcontract', year),
           bdrSubService.getSubTotalsByMonth('design', year),
           bdrSubService.getSubTotalsByMonth('rental', year),
+          bdrSubService.getSubTotalsByMonth('overhead_labor', year),
         ]);
 
       const pMap: EntryMap = new Map();
@@ -77,6 +78,7 @@ export function useBdr(year: number): IUseBdrResult {
         cost_subcontract: subTotals,
         cost_design: designTotals,
         cost_rental: rentalTotals,
+        overhead_01: overheadLaborTotals,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
@@ -117,7 +119,12 @@ export function useBdr(year: number): IUseBdrResult {
           return (nzp / rev) * 100;
         }
         case 'cost_overhead':
-          return OVERHEAD_CODES.reduce((sum, c) => sum + v(c, month, type), 0);
+          return OVERHEAD_CODES.reduce((sum, c) => {
+            if (c === 'overhead_01' && type === 'fact') {
+              return sum + (subTotals['overhead_01']?.[month] || 0);
+            }
+            return sum + v(c, month, type);
+          }, 0);
         case 'cost_total':
           return COST_ROW_CODES.reduce((sum, c) => sum + calcMonthVal(c, month, type), 0);
         case 'overhead_ratio': {

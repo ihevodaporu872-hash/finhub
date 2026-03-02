@@ -39,9 +39,12 @@ export const BdrTable = ({ rows, overheadExpanded, onToggleOverhead, onUpdatePla
         }
 
         if (record.isClickable && record.subType) {
+          const cls = record.isOverheadItem
+            ? 'bdr-clickable-name bdr-overhead-indent'
+            : 'bdr-clickable-name';
           return (
             <span
-              className="bdr-clickable-name"
+              className={cls}
               onClick={() => onOpenSub(record.subType!)}
             >
               {record.name}

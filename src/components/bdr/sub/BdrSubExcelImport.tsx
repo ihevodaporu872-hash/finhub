@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Button, message } from 'antd';
+import { Button, message, notification } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import type { BdrSubEntryFormData, BdrSubType } from '../../../types/bdr';
@@ -66,6 +66,11 @@ const parseDate = (raw: unknown): string => {
   return '';
 };
 
+interface IFailedRow {
+  rowNum: number;
+  reason: string;
+}
+
 export const BdrSubExcelImport = ({ subType, projectId, onImport }: IProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -82,16 +87,26 @@ export const BdrSubExcelImport = ({ subType, projectId, onImport }: IProps) => {
       }
 
       const entries: BdrSubEntryFormData[] = [];
-      let skipped = 0;
+      const failedRows: IFailedRow[] = [];
 
-      for (const row of jsonData) {
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        const rowNum = i + 2; // +2: строка 1 — заголовок
         const company = String(findColumnValue(row, COLUMN_ALIASES.company) ?? '');
         const description = String(findColumnValue(row, COLUMN_ALIASES.description) ?? '');
         const amount = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount));
         const entryDate = parseDate(findColumnValue(row, COLUMN_ALIASES.date));
 
-        if (!entryDate || !amount) {
-          skipped++;
+        if (!entryDate && !amount) {
+          failedRows.push({ rowNum, reason: 'Не распознаны дата и сумма' });
+          continue;
+        }
+        if (!entryDate) {
+          failedRows.push({ rowNum, reason: 'Не удалось распознать дату' });
+          continue;
+        }
+        if (!amount) {
+          failedRows.push({ rowNum, reason: 'Сумма равна нулю или не распознана' });
           continue;
         }
 
@@ -112,10 +127,22 @@ export const BdrSubExcelImport = ({ subType, projectId, onImport }: IProps) => {
       }
 
       await onImport(entries);
-      const msg = skipped > 0
-        ? `Импортировано ${entries.length} записей (пропущено: ${skipped})`
-        : `Импортировано ${entries.length} записей`;
-      message.success(msg);
+
+      if (failedRows.length > 0) {
+        notification.warning({
+          message: `Импортировано ${entries.length} из ${jsonData.length} строк`,
+          description: (
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {failedRows.map((f) => (
+                <li key={f.rowNum}>Строка {f.rowNum}: {f.reason}</li>
+              ))}
+            </ul>
+          ),
+          duration: 0,
+        });
+      } else {
+        message.success(`Импортировано ${entries.length} записей`);
+      }
     } catch (err) {
       console.error('Excel import error:', err);
       message.error('Ошибка импорта файла');

@@ -29,7 +29,7 @@ export const BDR_ROWS: BdrRowDef[] = [
 ];
 
 export const BDR_OVERHEAD_ROWS: BdrRowDef[] = [
-  { code: 'overhead_01', name: 'Оплата труда ИТР (в т.ч. Налоги с ФОТ)' },
+  { code: 'overhead_01', name: 'Оплата труда ИТР (в т.ч. Налоги с ФОТ)', isClickable: true, subType: 'overhead_labor' as const },
   { code: 'overhead_02', name: 'Водопотребление, водоотведение' },
   { code: 'overhead_03', name: 'Электроснабжение' },
   { code: 'overhead_04', name: 'Теплоснабжение' },
@@ -72,4 +72,5 @@ export const BDR_SUB_TYPES: Record<BdrSubType, { title: string; rowCode: string 
   subcontract: { title: 'Субподряд проекта', rowCode: 'cost_subcontract' },
   design: { title: 'Проектные работы по проекту', rowCode: 'cost_design' },
   rental: { title: 'Аренда БК и подъемников по проекту', rowCode: 'cost_rental' },
+  overhead_labor: { title: 'Оплата труда ИТР (в т.ч. Налоги с ФОТ) по проекту', rowCode: 'overhead_01' },
 };
