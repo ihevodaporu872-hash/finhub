@@ -122,6 +122,11 @@ export function useBdr(year: number, projectId: string | null = null): IUseBdrRe
           return calcMonthVal('revenue_smr', month, type);
         case 'contract_not_accepted':
           return calcMonthVal('execution_total', month, type) - calcMonthVal('revenue_smr', month, type);
+        case 'readiness_percent': {
+          const smrGrandTotal = Object.values(smrTotals).reduce((s, val) => s + val, 0);
+          if (!smrGrandTotal) return 0;
+          return (calcMonthVal('revenue_smr', month, type) / smrGrandTotal) * 100;
+        }
         case 'nzp_to_revenue': {
           const rev = calcMonthVal('revenue', month, type);
           if (!rev) return 0;
