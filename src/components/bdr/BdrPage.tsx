@@ -7,6 +7,7 @@ import { BdrSubModal } from './sub/BdrSubModal';
 
 export const BdrPage = () => {
   const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const {
     rows,
     loading,
@@ -19,7 +20,9 @@ export const BdrPage = () => {
     openSubType,
     setOpenSubType,
     reload,
-  } = useBdr(year);
+  } = useBdr(year, selectedProjectId);
+
+  const isReadOnly = !selectedProjectId;
 
   const handleSave = async () => {
     try {
@@ -47,13 +50,15 @@ export const BdrPage = () => {
           onYearChange={setYear}
           onSave={handleSave}
           saving={saving}
+          selectedProjectId={selectedProjectId}
+          onProjectChange={setSelectedProjectId}
         />
         <BdrTable
           rows={rows}
           overheadExpanded={overheadExpanded}
           onToggleOverhead={toggleOverhead}
-          onUpdatePlan={(code, month, amount) => updateEntry(code, month, amount, 'plan')}
-          onUpdateFact={(code, month, amount) => updateEntry(code, month, amount, 'fact')}
+          onUpdatePlan={isReadOnly ? undefined : (code, month, amount) => updateEntry(code, month, amount, 'plan')}
+          onUpdateFact={isReadOnly ? undefined : (code, month, amount) => updateEntry(code, month, amount, 'fact')}
           onOpenSub={setOpenSubType}
         />
       </Card>

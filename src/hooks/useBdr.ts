@@ -23,7 +23,7 @@ interface IUseBdrResult {
 
 type EntryMap = Map<string, MonthValues>;
 
-export function useBdr(year: number): IUseBdrResult {
+export function useBdr(year: number, projectId: string | null = null): IUseBdrResult {
   const [planMap, setPlanMap] = useState<EntryMap>(new Map());
   const [factMap, setFactMap] = useState<EntryMap>(new Map());
   const [subTotals, setSubTotals] = useState<Record<string, MonthValues>>({});
@@ -47,18 +47,19 @@ export function useBdr(year: number): IUseBdrResult {
       setError(null);
       dirtyRef.current.clear();
 
+      const pid = projectId || undefined;
       const [planEntries, factEntries, smr, matTotals, laborTotals, subTotals, designTotals, rentalTotals, overheadLaborTotals, actTotals] =
         await Promise.all([
-          bdrService.getEntries(year, 'plan'),
-          bdrService.getEntries(year, 'fact'),
-          bdrService.getSmrTotalsByMonth(year),
-          bdrSubService.getSubTotalsByMonth('materials', year),
-          bdrSubService.getSubTotalsByMonth('labor', year),
-          bdrSubService.getSubTotalsByMonth('subcontract', year),
-          bdrSubService.getSubTotalsByMonth('design', year),
-          bdrSubService.getSubTotalsByMonth('rental', year),
-          bdrSubService.getSubTotalsByMonth('overhead_labor', year),
-          actualExecutionService.getAggregatedTotals(year),
+          bdrService.getEntries(year, 'plan', pid),
+          bdrService.getEntries(year, 'fact', pid),
+          bdrService.getSmrTotalsByMonth(year, pid),
+          bdrSubService.getSubTotalsByMonth('materials', year, pid),
+          bdrSubService.getSubTotalsByMonth('labor', year, pid),
+          bdrSubService.getSubTotalsByMonth('subcontract', year, pid),
+          bdrSubService.getSubTotalsByMonth('design', year, pid),
+          bdrSubService.getSubTotalsByMonth('rental', year, pid),
+          bdrSubService.getSubTotalsByMonth('overhead_labor', year, pid),
+          actualExecutionService.getAggregatedTotals(year, pid),
         ]);
 
       const pMap: EntryMap = new Map();
@@ -90,7 +91,7 @@ export function useBdr(year: number): IUseBdrResult {
     } finally {
       setLoading(false);
     }
-  }, [year]);
+  }, [year, projectId]);
 
   useEffect(() => {
     loadData();
@@ -246,6 +247,7 @@ export function useBdr(year: number): IUseBdrResult {
         month: number;
         amount: number;
         entry_type: 'plan' | 'fact';
+        project_id?: string;
       }> = [];
 
       const allRowDefs = [...BDR_ROWS, ...BDR_OVERHEAD_ROWS];
@@ -257,13 +259,18 @@ export function useBdr(year: number): IUseBdrResult {
           const planAmount = planMap.get(def.code)?.[m.key] || 0;
           const factAmount = factMap.get(def.code)?.[m.key] || 0;
 
+          const base: { row_code: string; year: number; month: number; project_id?: string } = {
+            row_code: def.code, year, month: m.key,
+          };
+          if (projectId) base.project_id = projectId;
+
           if (planAmount !== 0 || dirtyRef.current.has(`${def.code}_${m.key}_plan`)) {
-            entries.push({ row_code: def.code, year, month: m.key, amount: planAmount, entry_type: 'plan' });
+            entries.push({ ...base, amount: planAmount, entry_type: 'plan' });
           }
           // Для кликабельных строк факт приходит из суб-баз, не сохраняем
           if (def.isClickable) continue;
           if (factAmount !== 0 || dirtyRef.current.has(`${def.code}_${m.key}_fact`)) {
-            entries.push({ row_code: def.code, year, month: m.key, amount: factAmount, entry_type: 'fact' });
+            entries.push({ ...base, amount: factAmount, entry_type: 'fact' });
           }
         }
       }
@@ -273,7 +280,7 @@ export function useBdr(year: number): IUseBdrResult {
     } finally {
       setSaving(false);
     }
-  }, [planMap, factMap, year]);
+  }, [planMap, factMap, year, projectId]);
 
   return {
     rows,

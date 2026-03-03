@@ -47,11 +47,17 @@ export async function deleteEntry(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function getAggregatedTotals(year: number): Promise<ActualExecutionTotals> {
-  const { data, error } = await supabase
+export async function getAggregatedTotals(year: number, projectId?: string): Promise<ActualExecutionTotals> {
+  let query = supabase
     .from('actual_execution_entries')
     .select('month_key, ks_amount, fact_amount')
     .like('month_key', `${year}-%`);
+
+  if (projectId) {
+    query = query.eq('project_id', projectId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 

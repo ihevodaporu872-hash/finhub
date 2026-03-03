@@ -12,13 +12,18 @@ export async function getCategories(): Promise<BddsCategory[]> {
   return data as BddsCategory[];
 }
 
-export async function getEntries(year: number, entryType: EntryType): Promise<BddsEntry[]> {
-  const { data, error } = await supabase
+export async function getEntries(year: number, entryType: EntryType, projectId?: string): Promise<BddsEntry[]> {
+  let query = supabase
     .from('bdds_entries')
     .select('*')
     .eq('year', year)
     .eq('entry_type', entryType);
 
+  if (projectId) {
+    query = query.eq('project_id', projectId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data as BddsEntry[];
 }
@@ -54,6 +59,7 @@ export async function upsertBatch(
     month: number;
     amount: number;
     entry_type: EntryType;
+    project_id?: string;
   }>
 ): Promise<void> {
   if (entries.length === 0) return;
@@ -63,9 +69,14 @@ export async function upsertBatch(
     updated_at: new Date().toISOString(),
   }));
 
+  const hasProject = entries.some((e) => e.project_id);
+  const onConflict = hasProject
+    ? 'category_id,year,month,entry_type,project_id'
+    : 'category_id,year,month,entry_type';
+
   const { error } = await supabase
     .from('bdds_entries')
-    .upsert(withTimestamp, { onConflict: 'category_id,year,month,entry_type' });
+    .upsert(withTimestamp, { onConflict });
 
   if (error) throw error;
 }

@@ -6,7 +6,10 @@ import { BddsTable } from './BddsTable';
 
 export const BddsPage = () => {
   const [year, setYear] = useState(new Date().getFullYear());
-  const { sections, loading, saving, error, updateFactEntry, saveAll } = useBdds(year);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const { sections, loading, saving, error, updateFactEntry, saveAll } = useBdds(year, selectedProjectId);
+
+  const isReadOnly = !selectedProjectId;
 
   const handleSave = async () => {
     try {
@@ -28,14 +31,19 @@ export const BddsPage = () => {
         onYearChange={setYear}
         onSave={handleSave}
         saving={saving}
+        selectedProjectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
       />
       {loading ? (
         <div className="page-center">
           <Spin size="large" />
         </div>
       ) : (
-        <BddsTable sections={sections} onUpdateFact={updateFactEntry} />
+        <BddsTable
+          sections={sections}
+          onUpdateFact={isReadOnly ? undefined : updateFactEntry}
+        />
       )}
     </Card>
   );
-}
+};

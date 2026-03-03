@@ -8,8 +8,8 @@ interface IProps {
   rows: BdrTableRow[];
   overheadExpanded: boolean;
   onToggleOverhead: () => void;
-  onUpdatePlan: (rowCode: string, month: number, amount: number) => void;
-  onUpdateFact: (rowCode: string, month: number, amount: number) => void;
+  onUpdatePlan?: (rowCode: string, month: number, amount: number) => void;
+  onUpdateFact?: (rowCode: string, month: number, amount: number) => void;
   onOpenSub: (subType: BdrSubType) => void;
 }
 

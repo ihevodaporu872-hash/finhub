@@ -64,13 +64,19 @@ export async function upsertNotes(
   if (error) throw error;
 }
 
-export async function getIncomeTotalsByMonth(year: number): Promise<Record<number, number>> {
+export async function getIncomeTotalsByMonth(year: number, projectId?: string): Promise<Record<number, number>> {
   // Загружаем данные за год + декабрь предыдущего года (для расчёта января)
   const prevDec = `${year - 1}-12`;
-  const { data, error } = await supabase
+  let query = supabase
     .from('bdds_income_entries')
     .select('work_type_code, month_key, amount')
     .or(`month_key.like.${year}-%,month_key.eq.${prevDec}`);
+
+  if (projectId) {
+    query = query.eq('project_id', projectId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 

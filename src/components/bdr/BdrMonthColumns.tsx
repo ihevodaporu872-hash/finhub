@@ -23,8 +23,8 @@ function formatPercentValue(value: number): string {
 }
 
 interface IMonthColumnsOptions {
-  onUpdatePlan: (rowCode: string, month: number, amount: number) => void;
-  onUpdateFact: (rowCode: string, month: number, amount: number) => void;
+  onUpdatePlan?: (rowCode: string, month: number, amount: number) => void;
+  onUpdateFact?: (rowCode: string, month: number, amount: number) => void;
 }
 
 export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType<BdrTableRow> => {
@@ -51,12 +51,12 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
               return <span>{formatPercentValue(value)}</span>;
             }
 
-            const readOnly = record.isCalculated;
+            const readOnly = record.isCalculated || !onUpdatePlan;
             return (
               <BddsEditableCell
                 value={value}
                 isCalculated={readOnly}
-                onSave={(v) => onUpdatePlan(record.rowCode, m.key, v)}
+                onSave={(v) => onUpdatePlan?.(record.rowCode, m.key, v)}
               />
             );
           },
@@ -76,12 +76,12 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
               return <span>{formatPercentValue(value)}</span>;
             }
 
-            const readOnly = record.isCalculated || !!record.isClickable;
+            const readOnly = record.isCalculated || !!record.isClickable || !onUpdateFact;
             return (
               <BddsEditableCell
                 value={value}
                 isCalculated={readOnly}
-                onSave={(v) => onUpdateFact(record.rowCode, m.key, v)}
+                onSave={(v) => onUpdateFact?.(record.rowCode, m.key, v)}
               />
             );
           },

@@ -14,7 +14,7 @@ interface IUseBddsResult {
   saveAll: () => Promise<void>;
 }
 
-export function useBdds(year: number): IUseBddsResult {
+export function useBdds(year: number, projectId: string | null = null): IUseBddsResult {
   const [sections, setSections] = useState<BddsSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -88,11 +88,12 @@ export function useBdds(year: number): IUseBddsResult {
       setError(null);
       dirtyFactRef.current.clear();
 
+      const pid = projectId || undefined;
       const [categories, planEntries, factEntries, incomeTotals] = await Promise.all([
         bddsService.getCategories(),
-        bddsService.getEntries(year, 'plan'),
-        bddsService.getEntries(year, 'fact'),
-        bddsIncomeService.getIncomeTotalsByMonth(year),
+        bddsService.getEntries(year, 'plan', pid),
+        bddsService.getEntries(year, 'fact', pid),
+        bddsIncomeService.getIncomeTotalsByMonth(year, pid),
       ]);
 
       categoriesRef.current = categories;
@@ -119,7 +120,7 @@ export function useBdds(year: number): IUseBddsResult {
     } finally {
       setLoading(false);
     }
-  }, [year, buildSections]);
+  }, [year, projectId, buildSections]);
 
   useEffect(() => {
     loadData();
@@ -172,6 +173,7 @@ export function useBdds(year: number): IUseBddsResult {
         month: number;
         amount: number;
         entry_type: 'fact';
+        project_id?: string;
       }> = [];
 
       for (const section of sections) {
@@ -180,13 +182,15 @@ export function useBdds(year: number): IUseBddsResult {
           for (const m of MONTHS) {
             const amount = row.factMonths[m.key] || 0;
             if (amount !== 0 || dirtyFactRef.current.has(`${row.categoryId}_${m.key}`)) {
-              entries.push({
+              const entry: typeof entries[number] = {
                 category_id: row.categoryId,
                 year,
                 month: m.key,
                 amount,
                 entry_type: 'fact',
-              });
+              };
+              if (projectId) entry.project_id = projectId;
+              entries.push(entry);
             }
           }
         }
@@ -197,7 +201,7 @@ export function useBdds(year: number): IUseBddsResult {
     } finally {
       setSaving(false);
     }
-  }, [sections, year]);
+  }, [sections, year, projectId]);
 
   return { sections, loading, saving, error, updateFactEntry, saveAll };
 }

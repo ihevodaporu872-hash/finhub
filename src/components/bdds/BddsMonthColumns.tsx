@@ -18,7 +18,7 @@ function formatDeviation(plan: number, fact: number): string {
 }
 
 interface IMonthColumnsOptions {
-  onUpdateFact: (categoryId: string, month: number, amount: number) => void;
+  onUpdateFact?: (categoryId: string, month: number, amount: number) => void;
 }
 
 export const buildMonthColumns = (
@@ -61,14 +61,14 @@ export const buildMonthColumns = (
             if (record.isHeader) return null;
             const value = record[`fact_month_${m.key}`] as number;
             const isAutoIncome = record.rowType === 'income' && record.sectionCode === 'operating';
-            const readOnly = record.isCalculated || isAutoIncome;
+            const readOnly = record.isCalculated || isAutoIncome || !onUpdateFact;
             return (
               <BddsEditableCell
                 value={value}
                 isCalculated={readOnly}
                 onSave={(newValue) => {
                   if (record.categoryId) {
-                    onUpdateFact(record.categoryId, m.key, newValue);
+                    onUpdateFact?.(record.categoryId, m.key, newValue);
                   }
                 }}
               />

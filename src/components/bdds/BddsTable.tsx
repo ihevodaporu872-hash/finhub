@@ -7,7 +7,7 @@ import { buildMonthColumns, buildTotalColumns } from './BddsMonthColumns';
 
 interface IProps {
   sections: BddsSection[];
-  onUpdateFact: (categoryId: string, month: number, amount: number) => void;
+  onUpdateFact?: (categoryId: string, month: number, amount: number) => void;
 }
 
 export const BddsTable = ({ sections, onUpdateFact }: IProps) => {
