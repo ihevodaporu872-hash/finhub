@@ -93,10 +93,14 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
           align: 'right',
           className: 'bdds-abs-cell',
           render: (_: unknown, record: BdrTableRow) => {
-            if (record.isHeader || record.isPercent) return null;
+            if (record.isHeader) return null;
             const plan = (record[`plan_month_${m.key}`] as number) || 0;
             const fact = (record[`fact_month_${m.key}`] as number) || 0;
             const abs = fact - plan;
+            if (record.isPercent) {
+              if (!abs && !fact && !plan) return null;
+              return <span className={abs < 0 ? 'amount-negative' : ''}>{formatPercentValue(abs)}</span>;
+            }
             return (
               <span className={abs < 0 ? 'amount-negative' : ''}>
                 {formatDeviation(plan, fact)}
@@ -177,10 +181,14 @@ export const buildBdrTotalColumns = (): ColumnsType<BdrTableRow> => {
           align: 'right',
           className: 'bdds-total-cell',
           render: (_: unknown, record: BdrTableRow) => {
-            if (record.isHeader || record.isPercent) return null;
+            if (record.isHeader) return null;
             const plan = (record.plan_total as number) || 0;
             const fact = (record.fact_total as number) || 0;
             const abs = fact - plan;
+            if (record.isPercent) {
+              if (!abs && !fact && !plan) return null;
+              return <span className={abs < 0 ? 'amount-negative' : ''}>{formatPercentValue(abs)}</span>;
+            }
             return (
               <span className={abs < 0 ? 'amount-negative' : ''}>
                 {formatDeviation(plan, fact)}
