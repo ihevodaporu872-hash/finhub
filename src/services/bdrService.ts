@@ -106,7 +106,7 @@ export async function getRevenueCumulativeBefore(
   // Факт: сумма ks_amount из actual_execution_entries за все месяцы до year-01
   let ksQuery = supabase
     .from('actual_execution_entries')
-    .select('ks_amount')
+    .select('ks_amount, month_key')
     .lt('month_key', maxMonthKey);
 
   if (projectId) {
@@ -116,7 +116,10 @@ export async function getRevenueCumulativeBefore(
   const { data: ksData, error: ksError } = await ksQuery;
   if (ksError) throw ksError;
 
-  const fact = ksData.reduce((sum, e) => sum + Number(e.ks_amount), 0);
+  const fact = ksData.reduce((sum, e) => {
+    const ky = parseInt(e.month_key.split('-')[0], 10);
+    return sum + removeVat(Number(e.ks_amount), ky);
+  }, 0);
 
   return { plan, fact };
 }
