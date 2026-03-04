@@ -1,20 +1,28 @@
 import type { FC } from 'react';
-import { Space } from 'antd';
+import { Space, Typography } from 'antd';
 import { YearSelect } from '../common/YearSelect';
 import { ProjectSelect } from '../common/ProjectSelect';
 
 interface IProps {
-  year: number;
-  onYearChange: (year: number) => void;
+  yearFrom: number;
+  yearTo: number;
+  onYearFromChange: (year: number) => void;
+  onYearToChange: (year: number) => void;
   selectedProjectId: string | null;
   onProjectChange: (projectId: string | null) => void;
 }
 
-export const DashboardToolbar: FC<IProps> = ({ year, onYearChange, selectedProjectId, onProjectChange }) => {
+export const DashboardToolbar: FC<IProps> = ({
+  yearFrom, yearTo, onYearFromChange, onYearToChange,
+  selectedProjectId, onProjectChange,
+}) => {
   return (
     <Space className="mb-16" wrap>
       <ProjectSelect value={selectedProjectId} onChange={onProjectChange} />
-      <YearSelect value={year} onChange={onYearChange} />
+      <Typography.Text>с</Typography.Text>
+      <YearSelect value={yearFrom} onChange={onYearFromChange} />
+      <Typography.Text>по</Typography.Text>
+      <YearSelect value={yearTo} onChange={onYearToChange} />
     </Space>
   );
 };
