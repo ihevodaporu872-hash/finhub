@@ -4,6 +4,7 @@ import { ActualExecutionPageWrapper } from './pages/ActualExecutionPageWrapper';
 import { BddsPageWrapper } from './pages/BddsPageWrapper';
 import { BdrPageWrapper } from './pages/BdrPageWrapper';
 import { BblPageWrapper } from './pages/BblPageWrapper';
+import { DashboardPageWrapper } from './pages/DashboardPageWrapper';
 import { AdminUsersPageWrapper } from './pages/AdminUsersPageWrapper';
 import { AdminProjectsPageWrapper } from './pages/AdminProjectsPageWrapper';
 import { BddsIncomePageWrapper } from './pages/BddsIncomePageWrapper';
@@ -18,6 +19,7 @@ export const App = () => {
           <Route path="/bdds/income" element={<BddsIncomePageWrapper />} />
           <Route path="/bdr" element={<BdrPageWrapper />} />
           <Route path="/bbl" element={<BblPageWrapper />} />
+          <Route path="/dashboards" element={<DashboardPageWrapper />} />
           <Route path="/admin/users" element={<AdminUsersPageWrapper />} />
           <Route path="/admin/projects" element={<AdminProjectsPageWrapper />} />
           <Route path="/" element={<Navigate to="/bdds" replace />} />

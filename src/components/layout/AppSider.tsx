@@ -9,6 +9,7 @@ import {
   ProjectOutlined,
   FundOutlined,
   CheckCircleOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
@@ -22,6 +23,7 @@ const menuItems: MenuItem[] = [
   { key: '/bdds/income', icon: <FundOutlined />, label: 'Плановый график' },
   { key: '/bdr', icon: <BarChartOutlined />, label: 'БДР' },
   { key: '/bbl', icon: <BankOutlined />, label: 'ББЛ' },
+  { key: '/dashboards', icon: <DashboardOutlined />, label: 'Дашборды' },
   {
     key: 'admin',
     icon: <SettingOutlined />,

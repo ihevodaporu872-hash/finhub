@@ -207,9 +207,38 @@ body {
   margin-bottom: 16px;
 }
 
+/* Dashboard */
+.dashboard-kpi-row {
+  margin-bottom: 24px;
+}
+
+.dashboard-chart-card {
+  margin-bottom: 16px;
+}
+
+.dashboard-spin {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+.dashboard-kpi-positive {
+  color: #3f8600;
+  font-size: 12px;
+}
+
+.dashboard-kpi-negative {
+  color: #cf1322;
+  font-size: 12px;
+}
+
 /* Адаптивность БДР */
 @media (max-width: 768px) {
   .bdr-overhead-indent {
     padding-left: 12px;
+  }
+
+  .dashboard-kpi-row .ant-col {
+    margin-bottom: 8px;
   }
 }
