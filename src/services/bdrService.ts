@@ -52,11 +52,16 @@ const SMR_CODES = [
   'elevators', 'engineering', 'landscaping', 'external_networks',
 ];
 
+function removeVat(amount: number, year: number): number {
+  const vatRate = year >= 2026 ? 22 : 20;
+  return amount * 100 / (100 + vatRate);
+}
+
 /** Итого «Всего СМР по проекту» за все годы */
 export async function getSmrAllYearsTotal(projectId?: string): Promise<number> {
   let query = supabase
     .from('bdds_income_entries')
-    .select('amount')
+    .select('amount, month_key')
     .in('work_type_code', SMR_CODES);
 
   if (projectId) {
@@ -66,7 +71,10 @@ export async function getSmrAllYearsTotal(projectId?: string): Promise<number> {
   const { data, error } = await query;
   if (error) throw error;
 
-  return data.reduce((sum, e) => sum + Number(e.amount), 0);
+  return data.reduce((sum, e) => {
+    const year = parseInt(e.month_key.split('-')[0], 10);
+    return sum + removeVat(Number(e.amount), year);
+  }, 0);
 }
 
 /** Кумулятивные суммы revenue_smr (план и факт) за все годы до указанного */
@@ -79,7 +87,7 @@ export async function getRevenueCumulativeBefore(
   // План: сумма SMR из bdds_income_entries за все месяцы до year-01
   let smrQuery = supabase
     .from('bdds_income_entries')
-    .select('amount')
+    .select('amount, month_key')
     .in('work_type_code', SMR_CODES)
     .lt('month_key', maxMonthKey);
 
@@ -90,7 +98,10 @@ export async function getRevenueCumulativeBefore(
   const { data: smrData, error: smrError } = await smrQuery;
   if (smrError) throw smrError;
 
-  const plan = smrData.reduce((sum, e) => sum + Number(e.amount), 0);
+  const plan = smrData.reduce((sum, e) => {
+    const y = parseInt(e.month_key.split('-')[0], 10);
+    return sum + removeVat(Number(e.amount), y);
+  }, 0);
 
   // Факт: сумма ks_amount из actual_execution_entries за все месяцы до year-01
   let ksQuery = supabase
@@ -127,7 +138,7 @@ export async function getSmrTotalsByMonth(year: number, projectId?: string): Pro
   const totals: Record<number, number> = {};
   for (const e of data) {
     const month = parseInt(e.month_key.split('-')[1], 10);
-    totals[month] = (totals[month] || 0) + Number(e.amount);
+    totals[month] = (totals[month] || 0) + removeVat(Number(e.amount), year);
   }
   return totals;
 }
