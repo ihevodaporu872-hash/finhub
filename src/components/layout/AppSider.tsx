@@ -10,6 +10,7 @@ import {
   FundOutlined,
   CheckCircleOutlined,
   DashboardOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
@@ -21,6 +22,7 @@ const menuItems: MenuItem[] = [
   { key: '/actual-execution', icon: <CheckCircleOutlined />, label: 'Факт. выполнение' },
   { key: '/bdds', icon: <DollarOutlined />, label: 'БДДС' },
   { key: '/bdds/income', icon: <FundOutlined />, label: 'Плановый график' },
+  { key: '/guarantee', icon: <SafetyCertificateOutlined />, label: 'Контроль ГУ' },
   { key: '/bdr', icon: <BarChartOutlined />, label: 'БДР' },
   { key: '/bbl', icon: <BankOutlined />, label: 'ББЛ' },
   { key: '/dashboards', icon: <DashboardOutlined />, label: 'Дашборды' },

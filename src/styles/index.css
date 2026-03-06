@@ -232,6 +232,53 @@ body {
   font-size: 12px;
 }
 
+/* Контроль ГУ */
+.guarantee-toolbar {
+  margin-bottom: 16px;
+}
+
+.guarantee-status-select {
+  min-width: 150px;
+}
+
+.guarantee-table .ant-table-summary .guarantee-summary-row td {
+  background-color: #fafafa !important;
+}
+
+.guarantee-fact-value {
+  color: #3f8600;
+  font-weight: 600;
+}
+
+.guarantee-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.guarantee-chart-card {
+  margin-top: 16px;
+}
+
+.guarantee-modal-subtitle {
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.guarantee-input-amount {
+  width: 100%;
+}
+
+.guarantee-input-date {
+  width: 100%;
+}
+
+/* Адаптивность ГУ */
+@media (max-width: 768px) {
+  .guarantee-status-select {
+    min-width: 120px;
+  }
+}
+
 /* Адаптивность БДР */
 @media (max-width: 768px) {
   .bdr-overhead-indent {
