@@ -42,6 +42,10 @@ export function useBddsIncome(): IUseBddsIncomeResult {
       setProjects(projectsData.filter((p) => p.is_active));
       setEntries(entriesData);
       setNotes(notesData);
+
+      // Диагностика: проверить данные Возврат ГУ
+      const guEntries = entriesData.filter((e) => e.work_type_code === 'guarantee_return' && Number(e.amount) !== 0);
+      console.log(`[loadData] Всего записей: ${entriesData.length}, Возврат ГУ (ненулевых): ${guEntries.length}`, guEntries);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
     } finally {

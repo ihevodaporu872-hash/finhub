@@ -31,16 +31,25 @@ export async function upsertEntries(
 ): Promise<void> {
   if (entries.length === 0) return;
 
+  const BATCH_SIZE = 500;
   const withTimestamp = entries.map((e) => ({
     ...e,
     updated_at: new Date().toISOString(),
   }));
 
-  const { error } = await supabase
-    .from('bdds_income_entries')
-    .upsert(withTimestamp, { onConflict: 'project_id,work_type_code,month_key' });
+  for (let i = 0; i < withTimestamp.length; i += BATCH_SIZE) {
+    const batch = withTimestamp.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase
+      .from('bdds_income_entries')
+      .upsert(batch, { onConflict: 'project_id,work_type_code,month_key' });
 
-  if (error) throw error;
+    if (error) {
+      console.error(`[upsertEntries] Ошибка батча ${i}-${i + batch.length}:`, error);
+      throw error;
+    }
+  }
+
+  console.log(`[upsertEntries] Сохранено ${withTimestamp.length} записей (${Math.ceil(withTimestamp.length / BATCH_SIZE)} батчей)`);
 }
 
 export async function upsertNotes(
