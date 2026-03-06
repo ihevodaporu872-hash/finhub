@@ -19,12 +19,12 @@ const { Sider } = Layout;
 type MenuItem = Required<MenuProps>['items'][number];
 
 const menuItems: MenuItem[] = [
-  { key: '/actual-execution', icon: <CheckCircleOutlined />, label: 'Факт. выполнение' },
-  { key: '/bdds', icon: <DollarOutlined />, label: 'БДДС' },
-  { key: '/bdds/income', icon: <FundOutlined />, label: 'Плановый график' },
-  { key: '/guarantee', icon: <SafetyCertificateOutlined />, label: 'Контроль ГУ' },
   { key: '/bdr', icon: <BarChartOutlined />, label: 'БДР' },
+  { key: '/bdds', icon: <DollarOutlined />, label: 'БДДС' },
   { key: '/bbl', icon: <BankOutlined />, label: 'ББЛ' },
+  { key: '/bdds/income', icon: <FundOutlined />, label: 'Плановый график' },
+  { key: '/actual-execution', icon: <CheckCircleOutlined />, label: 'Факт. выполнение' },
+  { key: '/guarantee', icon: <SafetyCertificateOutlined />, label: 'Контроль ГУ' },
   { key: '/dashboards', icon: <DashboardOutlined />, label: 'Дашборды' },
   {
     key: 'admin',
