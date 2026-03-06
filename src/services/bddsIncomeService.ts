@@ -2,13 +2,31 @@ import { supabase } from '../config/supabase';
 import type { BddsIncomeEntry, BddsIncomeNote } from '../types/bddsIncome';
 
 export async function getEntries(projectId?: string): Promise<BddsIncomeEntry[]> {
-  let query = supabase.from('bdds_income_entries').select('*').limit(10000);
-  if (projectId) {
-    query = query.eq('project_id', projectId);
+  const PAGE_SIZE = 1000;
+  const allData: BddsIncomeEntry[] = [];
+  let from = 0;
+
+  while (true) {
+    let query = supabase
+      .from('bdds_income_entries')
+      .select('*')
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (projectId) {
+      query = query.eq('project_id', projectId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    if (!data || data.length === 0) break;
+    allData.push(...(data as BddsIncomeEntry[]));
+
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
   }
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as BddsIncomeEntry[];
+
+  return allData;
 }
 
 export async function getNotes(projectId?: string): Promise<BddsIncomeNote[]> {
