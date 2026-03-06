@@ -5,9 +5,9 @@ export const BDR_ROWS: BdrRowDef[] = [
   { code: 'revenue', name: 'Выручка', isSemiBold: true, isCalculated: true },
   { code: 'revenue_smr', name: 'Выручка от СМР всего (КС-2 с Заказчиком)', isCalculated: true },
   { code: 'execution_total', name: 'Выполнение всего (КС-2 внутренняя)', isCalculated: true },
-  { code: 'contract_not_accepted', name: 'Всего работы по контракту выполненные, но не принятые заказчиком', isCalculated: true },
+  { code: 'contract_not_accepted', name: 'Всего работы по контракту выполненные, но не принятые заказчиком', isCalculated: true, noPlan: true },
   { code: 'readiness_percent', name: 'Процент готовности с начала строительства', isPercent: true, isCalculated: true },
-  { code: 'nzp_to_revenue', name: 'Отношение НЗП к Выручке', isPercent: true, isCalculated: true },
+  { code: 'nzp_to_revenue', name: 'Отношение НЗП к Выручке', isPercent: true, isCalculated: true, noPlan: true },
 
   { code: 'cost_total', name: 'Себестоимость в т.ч.', isSemiBold: true, isCalculated: true, isCostParent: true },
   { code: 'cost_materials', name: 'Материальные расходы', isClickable: true, subType: 'materials', isCostChild: true },

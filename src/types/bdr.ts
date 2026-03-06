@@ -44,6 +44,7 @@ export interface BdrRowDef {
   isCostParent?: boolean;
   isCostChild?: boolean;
   isPlanCalculated?: boolean;
+  noPlan?: boolean;
 }
 
 export type MonthValues = Record<number, number>;
@@ -63,6 +64,7 @@ export interface BdrTableRow {
   isCostParent?: boolean;
   isCostChild?: boolean;
   isPlanCalculated?: boolean;
+  noPlan?: boolean;
   plan_total?: number;
   fact_total?: number;
   [key: string]: unknown;

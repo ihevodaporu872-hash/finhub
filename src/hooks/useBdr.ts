@@ -201,6 +201,7 @@ export function useBdr(year: number, projectId: string | null = null): IUseBdrRe
         isCostParent: def.isCostParent,
         isCostChild: opts?.isCostChild,
         isPlanCalculated: def.isPlanCalculated,
+        noPlan: def.noPlan,
         isPercent: def.isPercent,
         subType: def.subType,
       };

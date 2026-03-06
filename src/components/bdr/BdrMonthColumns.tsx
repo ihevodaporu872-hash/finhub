@@ -44,7 +44,7 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
           align: 'right',
           className: 'bdds-plan-cell',
           render: (_: unknown, record: BdrTableRow) => {
-            if (record.isHeader) return null;
+            if (record.isHeader || record.noPlan) return null;
             const value = record[`plan_month_${m.key}`] as number;
 
             if (record.isPercent) {
@@ -93,7 +93,7 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
           align: 'right',
           className: 'bdds-abs-cell',
           render: (_: unknown, record: BdrTableRow) => {
-            if (record.isHeader) return null;
+            if (record.isHeader || record.noPlan) return null;
             const plan = (record[`plan_month_${m.key}`] as number) || 0;
             const fact = (record[`fact_month_${m.key}`] as number) || 0;
             const abs = fact - plan;
@@ -115,7 +115,7 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
           align: 'right',
           className: 'bdds-rel-cell',
           render: (_: unknown, record: BdrTableRow) => {
-            if (record.isHeader || record.isPercent) return null;
+            if (record.isHeader || record.isPercent || record.noPlan) return null;
             const plan = (record[`plan_month_${m.key}`] as number) || 0;
             const fact = (record[`fact_month_${m.key}`] as number) || 0;
             const abs = fact - plan;
@@ -148,7 +148,7 @@ export const buildBdrTotalColumns = (): ColumnsType<BdrTableRow> => {
           align: 'right',
           className: 'bdds-total-cell',
           render: (value: number, record: BdrTableRow) => {
-            if (record.isHeader) return null;
+            if (record.isHeader || record.noPlan) return null;
             if (record.isPercent) return null;
             return (
               <span className={value < 0 ? 'amount-negative' : ''}>
@@ -181,7 +181,7 @@ export const buildBdrTotalColumns = (): ColumnsType<BdrTableRow> => {
           align: 'right',
           className: 'bdds-total-cell',
           render: (_: unknown, record: BdrTableRow) => {
-            if (record.isHeader) return null;
+            if (record.isHeader || record.noPlan) return null;
             const plan = (record.plan_total as number) || 0;
             const fact = (record.fact_total as number) || 0;
             const abs = fact - plan;
@@ -203,7 +203,7 @@ export const buildBdrTotalColumns = (): ColumnsType<BdrTableRow> => {
           align: 'right',
           className: 'bdds-total-cell',
           render: (_: unknown, record: BdrTableRow) => {
-            if (record.isHeader || record.isPercent) return null;
+            if (record.isHeader || record.isPercent || record.noPlan) return null;
             const plan = (record.plan_total as number) || 0;
             const fact = (record.fact_total as number) || 0;
             const abs = fact - plan;
