@@ -32,9 +32,35 @@ export const DATA_WORK_TYPES = WORK_TYPES.filter(
   (w) => !w.isHeader && !w.isCalculated
 );
 
+function normalizeStr(s: string): string {
+  return s.trim().replace(/[\s\u00A0\u2007\u202F]+/g, ' ').toLowerCase();
+}
+
+const WORK_TYPE_ALIASES: Record<string, string[]> = {
+  guarantee_return: ['возврат гу', 'возврат г.у.', 'возврат г/у', 'возврат гарантийного удержания', 'возврат gu'],
+  guarantee_retention: ['гарантийное удержание', 'гарантийное удерж', 'гу'],
+  advance_income: ['аванс (приход)', 'аванс приход', 'аванс'],
+  advance_offset: ['зачет аванса', 'зачёт аванса'],
+};
+
 export function findWorkTypeByName(name: string): WorkType | undefined {
-  const trimmed = name.trim().toLowerCase();
+  const normalized = normalizeStr(name);
+
+  // Точное совпадение
+  const exact = DATA_WORK_TYPES.find(
+    (w) => normalizeStr(w.name) === normalized
+  );
+  if (exact) return exact;
+
+  // Поиск по алиасам
+  for (const [code, aliases] of Object.entries(WORK_TYPE_ALIASES)) {
+    if (aliases.some((a) => normalizeStr(a) === normalized)) {
+      return DATA_WORK_TYPES.find((w) => w.code === code);
+    }
+  }
+
+  // Частичное совпадение (contains)
   return DATA_WORK_TYPES.find(
-    (w) => w.name.toLowerCase() === trimmed
+    (w) => normalized.includes(normalizeStr(w.name)) || normalizeStr(w.name).includes(normalized)
   );
 }
