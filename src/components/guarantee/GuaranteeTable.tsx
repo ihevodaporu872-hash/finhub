@@ -98,7 +98,19 @@ export const GuaranteeTable: FC<IProps> = ({ rows, onSaveFact, onDeleteFact }) =
       render: (v: number) => formatAmount(v),
     },
     {
-      title: 'Возврат (план)',
+      title: 'Плановая дата возврата',
+      dataIndex: 'monthLabel',
+      key: 'plannedReturnDate',
+      width: 180,
+      render: (_: string, record: FlatRow) => {
+        if (record.returnPlan <= 0) return '';
+        const [yearStr, monthStr] = record.monthKey.split('-');
+        const endOfMonth = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10), 0);
+        return endOfMonth.toLocaleDateString('ru-RU');
+      },
+    },
+    {
+      title: 'Сумма возврата (план)',
       dataIndex: 'returnPlan',
       key: 'returnPlan',
       width: 150,
@@ -181,11 +193,12 @@ export const GuaranteeTable: FC<IProps> = ({ rows, onSaveFact, onDeleteFact }) =
             <Table.Summary.Row className="guarantee-summary-row">
               <Table.Summary.Cell index={0} colSpan={2}><strong>Итого</strong></Table.Summary.Cell>
               <Table.Summary.Cell index={2} align="right"><strong>{formatAmount(totalRetention)}</strong></Table.Summary.Cell>
-              <Table.Summary.Cell index={3} align="right"><strong>{formatAmount(totalPlan)}</strong></Table.Summary.Cell>
-              <Table.Summary.Cell index={4} align="right"><strong>{formatAmount(totalFact)}</strong></Table.Summary.Cell>
-              <Table.Summary.Cell index={5} />
+              <Table.Summary.Cell index={3} />
+              <Table.Summary.Cell index={4} align="right"><strong>{formatAmount(totalPlan)}</strong></Table.Summary.Cell>
+              <Table.Summary.Cell index={5} align="right"><strong>{formatAmount(totalFact)}</strong></Table.Summary.Cell>
               <Table.Summary.Cell index={6} />
               <Table.Summary.Cell index={7} />
+              <Table.Summary.Cell index={8} />
             </Table.Summary.Row>
           );
         }}
