@@ -83,12 +83,31 @@ export function useBdrSub(subType: BdrSubType, _year: number): IUseBdrSubResult 
   const importFromExcel = useCallback(
     async (data: BdrSubEntryFormData[]) => {
       try {
+        // Определяем уникальные месяцы из импортируемых данных
+        const monthsSet = new Map<string, { year: number; month: number }>();
+        for (const entry of data) {
+          const d = new Date(entry.entry_date);
+          const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+          if (!monthsSet.has(key)) {
+            monthsSet.set(key, { year: d.getFullYear(), month: d.getMonth() + 1 });
+          }
+        }
+
+        // Удаляем старые данные за эти периоды
+        if (monthsSet.size > 0) {
+          await bdrSubService.deleteSubEntriesByPeriod(
+            subType,
+            data[0]?.project_id ?? null,
+            Array.from(monthsSet.values())
+          );
+        }
+
         await bdrSubService.importSubEntries(data);
       } finally {
         await loadData();
       }
     },
-    [loadData]
+    [loadData, subType]
   );
 
   return {

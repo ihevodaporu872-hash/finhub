@@ -123,6 +123,29 @@ export async function getMultiSubTotalsByMonth(
   return result;
 }
 
+export async function deleteSubEntriesByPeriod(
+  subType: BdrSubType,
+  projectId: string | null,
+  months: Array<{ year: number; month: number }>
+): Promise<void> {
+  for (const { year, month } of months) {
+    const m = String(month).padStart(2, '0');
+    let query = supabase
+      .from('bdr_sub_entries')
+      .delete()
+      .eq('sub_type', subType)
+      .gte('entry_date', `${year}-${m}-01`)
+      .lte('entry_date', `${year}-${m}-31`);
+
+    if (projectId) {
+      query = query.eq('project_id', projectId);
+    }
+
+    const { error } = await query;
+    if (error) throw error;
+  }
+}
+
 export async function importSubEntries(entries: BdrSubEntryFormData[]): Promise<number> {
   if (entries.length === 0) return 0;
 

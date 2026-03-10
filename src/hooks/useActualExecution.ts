@@ -71,14 +71,19 @@ export function useActualExecution(yearFrom: number, yearTo: number): IUseActual
       projectId: string,
       data: Array<{ monthKey: string; ksAmount: number; factAmount: number }>
     ) => {
-      const entriesToUpsert = data.map((d) => ({
+      const monthKeys = data.map((d) => d.monthKey);
+
+      // Удаляем старые данные за импортируемые периоды
+      await actualExecutionService.deleteEntriesByProjectAndMonths(projectId, monthKeys);
+
+      const entriesToInsert = data.map((d) => ({
         project_id: projectId,
         month_key: d.monthKey,
         ks_amount: d.ksAmount,
         fact_amount: d.factAmount,
       }));
 
-      await actualExecutionService.upsertEntries(entriesToUpsert);
+      await actualExecutionService.upsertEntries(entriesToInsert);
       await loadData();
     },
     [loadData]

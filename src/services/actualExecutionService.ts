@@ -17,6 +17,21 @@ export async function getEntries(projectId?: string): Promise<ActualExecutionEnt
   return data as ActualExecutionEntry[];
 }
 
+export async function deleteEntriesByProjectAndMonths(
+  projectId: string,
+  monthKeys: string[]
+): Promise<void> {
+  if (monthKeys.length === 0) return;
+
+  const { error } = await supabase
+    .from('actual_execution_entries')
+    .delete()
+    .eq('project_id', projectId)
+    .in('month_key', monthKeys);
+
+  if (error) throw error;
+}
+
 export async function upsertEntries(
   entries: Array<{
     project_id: string;
