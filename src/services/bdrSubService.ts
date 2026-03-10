@@ -1,6 +1,11 @@
 import { supabase } from '../config/supabase';
 import type { BdrSubEntry, BdrSubEntryFormData, BdrSubType } from '../types/bdr';
 
+function lastDayOfMonth(year: number, month: number): string {
+  const d = new Date(year, month, 0).getDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
 export async function getSubEntries(
   subType: BdrSubType,
   projectId?: string,
@@ -22,7 +27,7 @@ export async function getSubEntries(
       const m = String(month).padStart(2, '0');
       query = query
         .gte('entry_date', `${year}-${m}-01`)
-        .lte('entry_date', `${year}-${m}-31`);
+        .lte('entry_date', lastDayOfMonth(year, month));
     } else {
       query = query
         .gte('entry_date', `${year}-01-01`)
@@ -135,7 +140,7 @@ export async function deleteSubEntriesByPeriod(
       .delete()
       .eq('sub_type', subType)
       .gte('entry_date', `${year}-${m}-01`)
-      .lte('entry_date', `${year}-${m}-31`);
+      .lte('entry_date', lastDayOfMonth(year, month));
 
     if (projectId) {
       query = query.eq('project_id', projectId);
