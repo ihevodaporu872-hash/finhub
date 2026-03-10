@@ -52,10 +52,6 @@ export const BdrSubTable = ({ subType, entries, loading, onEdit, onDelete }: IPr
   const isOverheadLabor = subType === 'overhead_labor';
   const isFixedExpenses = subType === 'fixed_expenses';
 
-  const yearTotal = isFixedExpenses
-    ? entries.reduce((sum, e) => sum + Number(e.amount), 0)
-    : 0;
-
   const MONTH_NAMES = [
     '', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
     'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
@@ -75,12 +71,14 @@ export const BdrSubTable = ({ subType, entries, loading, onEdit, onDelete }: IPr
         },
         {
           title: 'ОФЗ за год',
+          dataIndex: 'description',
           key: 'ofz_year',
           width: 160,
           align: 'right' as const,
-          render: () => (
-            <span>{formatAmount(yearTotal)}</span>
-          ),
+          render: (val: string) => {
+            const num = Number(val);
+            return <span>{!isNaN(num) && val ? num.toLocaleString('ru-RU', { maximumFractionDigits: 10 }) : val}</span>;
+          },
         },
         {
           ...amountColumn,

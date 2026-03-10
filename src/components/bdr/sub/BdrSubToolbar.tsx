@@ -36,14 +36,10 @@ export const BdrSubToolbar = ({
   const hasMonthFilter = isOverheadLabor || isFixedExpenses;
 
   const handleExport = () => {
-    const yearTotal = isFixedExpenses
-      ? entries.reduce((sum, e) => sum + Number(e.amount), 0)
-      : 0;
-
     const exportData = isFixedExpenses
       ? entries.map((e) => ({
           'Период': new Date(e.entry_date).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
-          'ОФЗ за год': yearTotal,
+          'ОФЗ за год': e.description ? Number(e.description) : '',
           'Расходы с учетом ОФЗ': e.amount,
         }))
       : isOverheadLabor

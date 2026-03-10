@@ -17,6 +17,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   department: ['отдел/сотрудник', 'отдел', 'сотрудник', 'department', 'employee'],
   description: ['содержание', 'description', 'описание', 'наименование', 'назначение'],
   amount: ['сумма', 'amount', 'стоимость', 'итого', 'расходы с учетом офз'],
+  ofz: ['офз за год', 'офз', 'ofz'],
   date: ['дата', 'date'],
   period: ['период', 'period', 'месяц'],
 };
@@ -80,14 +81,32 @@ const MONTH_NAME_MAP: Record<string, number> = {
   'сентябрь': 9, 'октябрь': 10, 'ноябрь': 11, 'декабрь': 12,
 };
 
+const MONTH_ABBR_MAP: Record<string, number> = {
+  'янв': 1, 'фев': 2, 'мар': 3, 'апр': 4,
+  'май': 5, 'июн': 6, 'июл': 7, 'авг': 8,
+  'сен': 9, 'окт': 10, 'ноя': 11, 'дек': 12,
+};
+
 const parsePeriod = (raw: unknown): string => {
   if (!raw) return '';
   const str = String(raw).trim().toLowerCase();
+  // Полные названия: "Апрель 2025"
   for (const [name, num] of Object.entries(MONTH_NAME_MAP)) {
     if (str.startsWith(name)) {
       const yearMatch = str.match(/\d{4}/);
       const y = yearMatch ? yearMatch[0] : String(new Date().getFullYear());
       return `${y}-${String(num).padStart(2, '0')}-01`;
+    }
+  }
+  // Сокращённые: "апр.25", "апр 2025", "авг.25"
+  for (const [abbr, num] of Object.entries(MONTH_ABBR_MAP)) {
+    if (str.startsWith(abbr)) {
+      const yearMatch = str.match(/(\d{2,4})/);
+      if (yearMatch) {
+        const y = yearMatch[1].length === 2 ? `20${yearMatch[1]}` : yearMatch[1];
+        return `${y}-${String(num).padStart(2, '0')}-01`;
+      }
+      return `${new Date().getFullYear()}-${String(num).padStart(2, '0')}-01`;
     }
   }
   return parseDate(raw);
@@ -147,14 +166,18 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
     for (let r = startRow; r < rawRows.length; r++) {
       const cells = rawRows[r];
       if (!Array.isArray(cells) || cells.length < 2) continue;
-      // Первая ячейка — период, последняя числовая — сумма
+      // Первая ячейка — период, средняя — ОФЗ за год, последняя — сумма
       const firstCell = cells[0];
       const lastCell = cells[cells.length - 1];
       if (!firstCell || !lastCell) continue;
-      positional.push({
+      const obj: Record<string, unknown> = {
         'Период': firstCell,
         'Расходы с учетом ОФЗ': lastCell,
-      });
+      };
+      if (cells.length >= 3) {
+        obj['ОФЗ за год'] = cells[1];
+      }
+      positional.push(obj);
     }
     return positional;
   };
@@ -192,12 +215,15 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
             failedRows.push({ rowNum, reason: 'Не удалось распознать период' });
             continue;
           }
+          // Сохраняем значение "ОФЗ за год" из Excel в поле description
+          const ofzRaw = findColumnValue(row, COLUMN_ALIASES.ofz);
+          const ofzValue = ofzRaw !== undefined ? String(ofzRaw).replace(/\s/g, '').replace(',', '.') : '';
           entries.push({
             sub_type: subType,
             project_id: projectId,
             entry_date: entryDate,
             company: '',
-            description: '',
+            description: ofzValue,
             amount,
           });
         } else if (isOverheadLabor) {
