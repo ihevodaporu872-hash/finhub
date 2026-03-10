@@ -177,6 +177,15 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
             const nzp = calcMonthVal('contract_not_accepted', month, type);
             return (nzp / rev) * 100;
           }
+          case 'cost_materials':
+          case 'cost_labor':
+          case 'cost_subcontract':
+          case 'cost_design':
+          case 'cost_rental':
+            if (type === 'fact' && ySub[code]) {
+              return ySub[code]?.[month] || 0;
+            }
+            return getVal(code, month, type);
           case 'cost_overhead':
             return OVERHEAD_CODES.reduce((sum, c) => {
               if (type === 'fact' && ySub[c]) {
