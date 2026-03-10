@@ -143,7 +143,7 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
 
       if (failedRows.length > 0) {
         notification.warning({
-          title: `Импортировано ${entries.length} из ${jsonData.length} строк`,
+          message: `Импортировано ${entries.length} из ${jsonData.length} строк`,
           description: (
             <ul style={{ margin: 0, paddingLeft: 16 }}>
               {failedRows.map((f) => (
@@ -158,7 +158,8 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
       }
     } catch (err) {
       console.error('Excel import error:', err);
-      message.error('Ошибка импорта файла');
+      const msg = err instanceof Error ? err.message : String(err);
+      message.error(`Ошибка импорта файла: ${msg}`);
     }
 
     if (inputRef.current) {
