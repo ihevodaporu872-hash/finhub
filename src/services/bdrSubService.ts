@@ -174,7 +174,7 @@ export async function getFixedExpensesTotalsByMonth(
     const month = new Date(e.entry_date).getMonth() + 1;
     const amount = Number(e.amount) || 0;
     const ofz = Number(e.description) || 0;
-    const value = ofz ? amount / ofz : amount;
+    const value = ofz ? amount - (amount / ofz) : amount;
     totals[month] = (totals[month] || 0) + value;
   }
   return totals;
