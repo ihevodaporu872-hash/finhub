@@ -21,10 +21,12 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   period: ['период', 'period', 'месяц'],
 };
 
+const normalizeKey = (s: string): string => s.trim().replace(/\s+/g, ' ').toLowerCase();
+
 const findColumnValue = (row: Record<string, unknown>, aliases: string[]): unknown => {
   const keys = Object.keys(row);
   for (const alias of aliases) {
-    const found = keys.find((k) => k.trim().toLowerCase() === alias);
+    const found = keys.find((k) => normalizeKey(k) === alias);
     if (found !== undefined) return row[found];
   }
   return undefined;
