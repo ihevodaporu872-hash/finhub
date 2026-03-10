@@ -79,7 +79,7 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
         .map((r) => r.subType!);
 
       for (const yr of years) {
-        const [planEntries, factEntries, smr, mat, lab, sub, des, ren, overheadSubs, act] =
+        const [planEntries, factEntries, smr, mat, lab, sub, des, ren, fixExp, overheadSubs, act] =
           await Promise.all([
             bdrService.getEntries(yr, 'plan', pid),
             bdrService.getEntries(yr, 'fact', pid),
@@ -89,6 +89,7 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
             bdrSubService.getSubTotalsByMonth('subcontract', yr, pid),
             bdrSubService.getSubTotalsByMonth('design', yr, pid),
             bdrSubService.getSubTotalsByMonth('rental', yr, pid),
+            bdrSubService.getSubTotalsByMonth('fixed_expenses', yr, pid),
             bdrSubService.getMultiSubTotalsByMonth(overheadSubTypes, yr, pid),
             actualExecutionService.getAggregatedTotals(yr, pid),
           ]);
@@ -110,7 +111,7 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
 
         const subTotals: Record<string, MonthValues> = {
           cost_materials: mat, cost_labor: lab, cost_subcontract: sub,
-          cost_design: des, cost_rental: ren,
+          cost_design: des, cost_rental: ren, fixed_expenses: fixExp,
         };
 
         for (const ohDef of BDR_OVERHEAD_ROWS) {
@@ -207,9 +208,9 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
           case 'marginal_profit':
             return calcMonthVal('revenue', month, type) - calcMonthVal('cost_total', month, type);
           case 'fixed_expenses':
-            return type === 'plan'
-              ? calcMonthVal('revenue_smr', month, 'plan') * 0.2
-              : getVal('fixed_expenses', month, 'fact');
+            if (type === 'plan') return calcMonthVal('revenue_smr', month, 'plan') * 0.2;
+            if (ySub['fixed_expenses']) return ySub['fixed_expenses']?.[month] || 0;
+            return getVal('fixed_expenses', month, 'fact');
           case 'operating_profit':
             return calcMonthVal('marginal_profit', month, type) - calcMonthVal('fixed_expenses', month, type);
           case 'operating_profit_pct': {
@@ -254,7 +255,10 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
           let planVal: number;
           let factVal: number;
 
-          if (def.isCalculated || def.isPlanCalculated) {
+          if (def.isPlanCalculated && def.isClickable) {
+            planVal = calcMonthVal(def.code, m.key, 'plan');
+            factVal = calcMonthVal(def.code, m.key, 'fact');
+          } else if (def.isCalculated || def.isPlanCalculated) {
             planVal = calcMonthVal(def.code, m.key, 'plan');
             factVal = def.isCalculated
               ? calcMonthVal(def.code, m.key, 'fact')

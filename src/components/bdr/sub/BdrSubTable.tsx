@@ -50,8 +50,45 @@ const amountColumn = {
 
 export const BdrSubTable = ({ subType, entries, loading, onEdit, onDelete }: IProps) => {
   const isOverheadLabor = subType === 'overhead_labor';
+  const isFixedExpenses = subType === 'fixed_expenses';
 
-  const columns = isOverheadLabor
+  const yearTotal = isFixedExpenses
+    ? entries.reduce((sum, e) => sum + Number(e.amount), 0)
+    : 0;
+
+  const MONTH_NAMES = [
+    '', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+  ];
+
+  const columns = isFixedExpenses
+    ? [
+        {
+          title: 'Период',
+          dataIndex: 'entry_date',
+          key: 'period',
+          width: 150,
+          render: (date: string) => {
+            const m = new Date(date).getMonth() + 1;
+            return MONTH_NAMES[m] || date;
+          },
+        },
+        {
+          title: 'ОФЗ за год',
+          key: 'ofz_year',
+          width: 160,
+          align: 'right' as const,
+          render: () => (
+            <span>{formatAmount(yearTotal)}</span>
+          ),
+        },
+        {
+          ...amountColumn,
+          title: 'Расходы с учетом ОФЗ',
+        },
+        actionsColumn(onEdit, onDelete),
+      ]
+    : isOverheadLabor
     ? [
         {
           title: '№п/п',

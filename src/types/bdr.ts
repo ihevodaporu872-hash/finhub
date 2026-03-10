@@ -2,6 +2,7 @@ export type BdrEntryType = 'plan' | 'fact';
 
 export type BdrSubType =
   | 'materials' | 'labor' | 'subcontract' | 'design' | 'rental'
+  | 'fixed_expenses'
   | 'overhead_labor'
   | 'overhead_02' | 'overhead_03' | 'overhead_04' | 'overhead_05'
   | 'overhead_06' | 'overhead_07' | 'overhead_08' | 'overhead_09'

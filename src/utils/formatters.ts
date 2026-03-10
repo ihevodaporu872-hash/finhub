@@ -1,9 +1,11 @@
 export function formatAmount(value: number | undefined | null): string {
-  if (value === undefined || value === null || value === 0) return '';
+  if (value === undefined || value === null) return '';
+  const rounded = Math.round(value * 100) / 100;
+  if (rounded === 0) return '';
   return new Intl.NumberFormat('ru-RU', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(rounded);
 }
 
 export function parseAmount(value: string): number {

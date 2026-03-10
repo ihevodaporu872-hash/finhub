@@ -25,7 +25,7 @@ export function useBdrSub(subType: BdrSubType, _year: number): IUseBdrSubResult 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(
-    subType === 'overhead_labor' ? new Date().getMonth() + 1 : null
+    (subType === 'overhead_labor' || subType === 'fixed_expenses') ? new Date().getMonth() + 1 : null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

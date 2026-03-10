@@ -32,9 +32,21 @@ export const BdrSubToolbar = ({
   onImport,
 }: IProps) => {
   const isOverheadLabor = subType === 'overhead_labor';
+  const isFixedExpenses = subType === 'fixed_expenses';
+  const hasMonthFilter = isOverheadLabor || isFixedExpenses;
 
   const handleExport = () => {
-    const exportData = isOverheadLabor
+    const yearTotal = isFixedExpenses
+      ? entries.reduce((sum, e) => sum + Number(e.amount), 0)
+      : 0;
+
+    const exportData = isFixedExpenses
+      ? entries.map((e) => ({
+          'Период': new Date(e.entry_date).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
+          'ОФЗ за год': yearTotal,
+          'Расходы с учетом ОФЗ': e.amount,
+        }))
+      : isOverheadLabor
       ? entries.map((e, i) => ({
           '№п/п': i + 1,
           'Отдел/Сотрудник': e.company,
@@ -51,7 +63,7 @@ export const BdrSubToolbar = ({
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Данные');
-    const monthSuffix = isOverheadLabor && selectedMonth
+    const monthSuffix = hasMonthFilter && selectedMonth
       ? `_${String(selectedMonth).padStart(2, '0')}`
       : '';
     XLSX.writeFile(wb, `export_${subType}${monthSuffix}_${year}.xlsx`);
@@ -59,7 +71,7 @@ export const BdrSubToolbar = ({
 
   return (
     <Space className="mb-16" wrap>
-      {isOverheadLabor && (
+      {hasMonthFilter && (
         <Select
           value={selectedMonth}
           onChange={onMonthChange}

@@ -19,7 +19,7 @@ export const BDR_ROWS: BdrRowDef[] = [
 
   { code: 'overhead_ratio', name: 'Коэф.накладных расходов', isPercent: true, isCalculated: true },
   { code: 'marginal_profit', name: 'Маржинальная прибыль', isCalculated: true },
-  { code: 'fixed_expenses', name: 'Постоянные коммерческие и управленческие расходы (в т.ч. Амортизация) (ОФЗ)', isPlanCalculated: true },
+  { code: 'fixed_expenses', name: 'Постоянные коммерческие и управленческие расходы (в т.ч. Амортизация) (ОФЗ)', isPlanCalculated: true, isClickable: true, subType: 'fixed_expenses' },
   { code: 'operating_profit', name: 'Операционная прибыль', isCalculated: true },
   { code: 'operating_profit_pct', name: 'В % к общей прибыли', isPercent: true, isCalculated: true },
   { code: 'other_income_expense', name: 'Прочие доходы (расходы)' },
@@ -73,6 +73,7 @@ export const BDR_SUB_TYPES: Record<BdrSubType, { title: string; rowCode: string 
   subcontract: { title: 'Субподряд проекта', rowCode: 'cost_subcontract' },
   design: { title: 'Проектные работы по проекту', rowCode: 'cost_design' },
   rental: { title: 'Аренда БК и подъемников по проекту', rowCode: 'cost_rental' },
+  fixed_expenses: { title: 'Постоянные коммерческие и управленческие расходы (ОФЗ)', rowCode: 'fixed_expenses' },
   overhead_labor: { title: 'Оплата труда ИТР (в т.ч. Налоги с ФОТ) по проекту', rowCode: 'overhead_01' },
   overhead_02: { title: 'Водопотребление, водоотведение', rowCode: 'overhead_02' },
   overhead_03: { title: 'Электроснабжение', rowCode: 'overhead_03' },
