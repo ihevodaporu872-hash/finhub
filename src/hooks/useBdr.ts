@@ -187,8 +187,11 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
             }
             return getVal(code, month, type);
           case 'cost_overhead':
+            if (type === 'plan') {
+              return calcMonthVal('revenue_smr', month, 'plan') * 0.1;
+            }
             return OVERHEAD_CODES.reduce((sum, c) => {
-              if (type === 'fact' && ySub[c]) {
+              if (ySub[c]) {
                 return sum + (ySub[c]?.[month] || 0);
               }
               return sum + getVal(c, month, type);
