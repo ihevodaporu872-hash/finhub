@@ -41,7 +41,7 @@ export const buildMonthColumns = (
           title: 'План',
           dataIndex: `plan_month_${dk}`,
           key: `plan_${dk}`,
-          width: 95,
+          width: 80,
           align: 'right',
           className: 'bdds-plan-cell',
           render: (_: unknown, record: BddsTableRow) => {
@@ -59,7 +59,7 @@ export const buildMonthColumns = (
           title: 'Факт',
           dataIndex: `fact_month_${dk}`,
           key: `fact_${dk}`,
-          width: 95,
+          width: 80,
           align: 'right',
           className: 'bdds-fact-cell',
           render: (_: unknown, record: BddsTableRow) => {
@@ -83,7 +83,7 @@ export const buildMonthColumns = (
         {
           title: 'Абс.',
           key: `abs_${dk}`,
-          width: 85,
+          width: 80,
           align: 'right',
           className: 'bdds-abs-cell',
           render: (_: unknown, record: BddsTableRow) => {
@@ -102,7 +102,7 @@ export const buildMonthColumns = (
         {
           title: '%',
           key: `rel_${dk}`,
-          width: 65,
+          width: 55,
           align: 'right',
           className: 'bdds-rel-cell',
           render: (_: unknown, record: BddsTableRow) => {
@@ -136,7 +136,7 @@ export const buildTotalColumns = (): ColumnsType<BddsTableRow> => {
           title: 'План',
           dataIndex: 'plan_total',
           key: 'plan_total',
-          width: 110,
+          width: 90,
           align: 'right',
           className: 'bdds-total-cell',
           render: (value: number, record: BddsTableRow) => {
@@ -152,7 +152,7 @@ export const buildTotalColumns = (): ColumnsType<BddsTableRow> => {
           title: 'Факт',
           dataIndex: 'fact_total',
           key: 'fact_total',
-          width: 110,
+          width: 90,
           align: 'right',
           className: 'bdds-total-cell',
           render: (value: number, record: BddsTableRow) => {
@@ -167,7 +167,7 @@ export const buildTotalColumns = (): ColumnsType<BddsTableRow> => {
         {
           title: 'Абс.',
           key: 'abs_total',
-          width: 100,
+          width: 80,
           align: 'right',
           className: 'bdds-total-cell',
           render: (_: unknown, record: BddsTableRow) => {
@@ -186,7 +186,7 @@ export const buildTotalColumns = (): ColumnsType<BddsTableRow> => {
         {
           title: '%',
           key: 'rel_total',
-          width: 70,
+          width: 55,
           align: 'right',
           className: 'bdds-total-cell',
           render: (_: unknown, record: BddsTableRow) => {

@@ -208,8 +208,8 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
   }, [onUpdateFact, expandedParents, onToggleParent, isMultiYear, yearMonthSlots]);
 
   const scrollX = isMultiYear && yearMonthSlots
-    ? yearMonthSlots.length * 340 + 710
-    : 4500;
+    ? yearMonthSlots.length * 295 + 625
+    : 3860;
 
   return (
     <Table

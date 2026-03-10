@@ -33,29 +33,34 @@ body {
 .bdds-plan-cell {
   background-color: #f6ffed !important;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 /* Столбец Факт */
 .bdds-fact-cell {
   font-size: 12px;
+  white-space: nowrap;
 }
 
 /* Столбец Абсолютное отклонение */
 .bdds-abs-cell {
   background-color: #fff7e6 !important;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 /* Столбец Относительное отклонение */
 .bdds-rel-cell {
   background-color: #fff7e6 !important;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 /* Итоговая колонка */
 .bdds-total-cell {
   background-color: #fafafa !important;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* Неактивные пользователи */

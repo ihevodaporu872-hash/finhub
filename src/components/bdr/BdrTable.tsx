@@ -152,7 +152,7 @@ export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, cos
   };
 
   const scrollX = isMultiYear && yearMonthSlots
-    ? yearMonthSlots.length * 340 + 710
+    ? yearMonthSlots.length * 295 + 625
     : 'max-content';
 
   return (
