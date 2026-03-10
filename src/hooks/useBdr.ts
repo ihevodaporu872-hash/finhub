@@ -156,9 +156,8 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
           case 'revenue_smr':
             return type === 'plan' ? (ySmr[month] || 0) : (yAct.ks[month] || getVal('revenue_smr', month, 'fact'));
           case 'execution_total':
-            return type === 'fact' && yAct.fact[month]
-              ? yAct.fact[month]
-              : getVal('execution_total', month, type);
+            if (type === 'plan') return calcMonthVal('revenue_smr', month, 'plan');
+            return yAct.fact[month] || getVal('execution_total', month, 'fact');
           case 'revenue':
             return calcMonthVal('revenue_smr', month, type);
           case 'contract_not_accepted':
