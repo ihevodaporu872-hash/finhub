@@ -1,5 +1,6 @@
 import type { ColumnsType } from 'antd/es/table';
 import type { BdrTableRow } from '../../types/bdr';
+import type { YearMonthSlot } from '../../utils/constants';
 import { MONTHS } from '../../utils/constants';
 import { formatAmount } from '../../utils/formatters';
 import { BddsEditableCell } from '../bdds/BddsEditableCell';
@@ -25,27 +26,31 @@ function formatPercentValue(value: number): string {
 interface IMonthColumnsOptions {
   onUpdatePlan?: (rowCode: string, month: number, amount: number) => void;
   onUpdateFact?: (rowCode: string, month: number, amount: number) => void;
+  slots?: YearMonthSlot[];
 }
 
 export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType<BdrTableRow> => {
-  const { onUpdatePlan, onUpdateFact } = options;
+  const { onUpdatePlan, onUpdateFact, slots } = options;
   const cols: ColumnsType<BdrTableRow> = [];
 
-  for (const m of MONTHS) {
+  const items = slots ?? MONTHS.map((m) => ({ year: 0, month: m.key, label: m.short, dataKey: String(m.key) }));
+
+  for (const slot of items) {
+    const dk = slot.dataKey;
     cols.push({
-      title: m.short,
-      key: `month_group_${m.key}`,
+      title: slot.label,
+      key: `month_group_${dk}`,
       children: [
         {
           title: 'План',
-          dataIndex: `plan_month_${m.key}`,
-          key: `plan_${m.key}`,
+          dataIndex: `plan_month_${dk}`,
+          key: `plan_${dk}`,
           width: 95,
           align: 'right',
           className: 'bdds-plan-cell',
           render: (_: unknown, record: BdrTableRow) => {
             if (record.isHeader || record.noPlan) return null;
-            const value = record[`plan_month_${m.key}`] as number;
+            const value = record[`plan_month_${dk}`] as number;
 
             if (record.isPercent) {
               return <span>{formatPercentValue(value)}</span>;
@@ -56,21 +61,21 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
               <BddsEditableCell
                 value={value}
                 isCalculated={readOnly}
-                onSave={(v) => onUpdatePlan?.(record.rowCode, m.key, v)}
+                onSave={(v) => onUpdatePlan?.(record.rowCode, slot.month, v)}
               />
             );
           },
         },
         {
           title: 'Факт',
-          dataIndex: `fact_month_${m.key}`,
-          key: `fact_${m.key}`,
+          dataIndex: `fact_month_${dk}`,
+          key: `fact_${dk}`,
           width: 95,
           align: 'right',
           className: 'bdds-fact-cell',
           render: (_: unknown, record: BdrTableRow) => {
             if (record.isHeader) return null;
-            const value = record[`fact_month_${m.key}`] as number;
+            const value = record[`fact_month_${dk}`] as number;
 
             if (record.isPercent) {
               return <span>{formatPercentValue(value)}</span>;
@@ -81,21 +86,21 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
               <BddsEditableCell
                 value={value}
                 isCalculated={readOnly}
-                onSave={(v) => onUpdateFact?.(record.rowCode, m.key, v)}
+                onSave={(v) => onUpdateFact?.(record.rowCode, slot.month, v)}
               />
             );
           },
         },
         {
           title: 'Абс.',
-          key: `abs_${m.key}`,
+          key: `abs_${dk}`,
           width: 85,
           align: 'right',
           className: 'bdds-abs-cell',
           render: (_: unknown, record: BdrTableRow) => {
             if (record.isHeader || record.noPlan) return null;
-            const plan = (record[`plan_month_${m.key}`] as number) || 0;
-            const fact = (record[`fact_month_${m.key}`] as number) || 0;
+            const plan = (record[`plan_month_${dk}`] as number) || 0;
+            const fact = (record[`fact_month_${dk}`] as number) || 0;
             const abs = fact - plan;
             if (record.isPercent) {
               if (!abs && !fact && !plan) return null;
@@ -110,14 +115,14 @@ export const buildBdrMonthColumns = (options: IMonthColumnsOptions): ColumnsType
         },
         {
           title: '%',
-          key: `rel_${m.key}`,
+          key: `rel_${dk}`,
           width: 65,
           align: 'right',
           className: 'bdds-rel-cell',
           render: (_: unknown, record: BdrTableRow) => {
             if (record.isHeader || record.isPercent || record.noPlan) return null;
-            const plan = (record[`plan_month_${m.key}`] as number) || 0;
-            const fact = (record[`fact_month_${m.key}`] as number) || 0;
+            const plan = (record[`plan_month_${dk}`] as number) || 0;
+            const fact = (record[`fact_month_${dk}`] as number) || 0;
             const abs = fact - plan;
             return (
               <span className={abs < 0 ? 'amount-negative' : ''}>

@@ -15,6 +15,29 @@ export const MONTHS = [
   { key: 12, short: 'Дек', full: 'Декабрь' },
 ];
 
+export interface YearMonthSlot {
+  year: number;
+  month: number;
+  label: string;
+  dataKey: string;
+}
+
+export function buildYearMonthSlots(yearFrom: number, yearTo: number): YearMonthSlot[] {
+  const slots: YearMonthSlot[] = [];
+  const multiYear = yearFrom !== yearTo;
+  for (let y = yearFrom; y <= yearTo; y++) {
+    for (const m of MONTHS) {
+      slots.push({
+        year: y,
+        month: m.key,
+        label: multiYear ? `${m.short} ${y}` : m.short,
+        dataKey: multiYear ? `${y}_${m.key}` : String(m.key),
+      });
+    }
+  }
+  return slots;
+}
+
 export const SECTION_NAMES: Record<SectionCode, string> = {
   operating: 'Основная деятельность',
   investing: 'Инвестиционная деятельность',

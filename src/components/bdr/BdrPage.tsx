@@ -13,6 +13,8 @@ export const BdrPage = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const {
     rows,
+    yearRows,
+    yearMonthSlots,
     loading,
     saving,
     error,
@@ -73,6 +75,8 @@ export const BdrPage = () => {
         />
         <BdrTable
           rows={rows}
+          yearRows={yearRows}
+          yearMonthSlots={yearMonthSlots}
           overheadExpanded={overheadExpanded}
           costExpanded={costExpanded}
           onToggleOverhead={toggleOverhead}

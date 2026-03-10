@@ -2,10 +2,13 @@ import { useMemo } from 'react';
 import { Table } from 'antd';
 import { RightOutlined, DownOutlined } from '@ant-design/icons';
 import type { BdrTableRow, BdrSubType } from '../../types/bdr';
+import type { YearMonthSlot } from '../../utils/constants';
 import { buildBdrMonthColumns, buildBdrTotalColumns } from './BdrMonthColumns';
 
 interface IProps {
   rows: BdrTableRow[];
+  yearRows?: Map<number, BdrTableRow[]>;
+  yearMonthSlots?: YearMonthSlot[];
   overheadExpanded: boolean;
   costExpanded: boolean;
   onToggleOverhead: () => void;
@@ -15,7 +18,56 @@ interface IProps {
   onOpenSub: (subType: BdrSubType) => void;
 }
 
-export const BdrTable = ({ rows, overheadExpanded, costExpanded, onToggleOverhead, onToggleCost, onUpdatePlan, onUpdateFact, onOpenSub }: IProps) => {
+export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, costExpanded, onToggleOverhead, onToggleCost, onUpdatePlan, onUpdateFact, onOpenSub }: IProps) => {
+  const isMultiYear = yearMonthSlots ? yearMonthSlots.length > 12 : false;
+
+  const dataSource = useMemo((): BdrTableRow[] => {
+    if (!isMultiYear || !yearRows || !yearMonthSlots) {
+      return rows;
+    }
+
+    // Multi-year: merge per-year rows into single rows with year-month dataKeys
+    const firstYear = [...yearRows.keys()].sort((a, b) => a - b)[0];
+    const baseRows = yearRows.get(firstYear) ?? [];
+
+    return baseRows.map((baseRow, ri) => {
+      if (baseRow.isHeader) return baseRow;
+
+      const merged: BdrTableRow = {
+        ...baseRow,
+        plan_total: 0,
+        fact_total: 0,
+      };
+
+      // Удаляем старые plan_month_N / fact_month_N ключи
+      for (let m = 1; m <= 12; m++) {
+        delete merged[`plan_month_${m}`];
+        delete merged[`fact_month_${m}`];
+      }
+
+      let planTotal = 0;
+      let factTotal = 0;
+
+      for (const slot of yearMonthSlots) {
+        const yRows = yearRows.get(slot.year);
+        const yRow = yRows?.[ri];
+        const pv = (yRow?.[`plan_month_${slot.month}`] as number) || 0;
+        const fv = (yRow?.[`fact_month_${slot.month}`] as number) || 0;
+        merged[`plan_month_${slot.dataKey}`] = pv;
+        merged[`fact_month_${slot.dataKey}`] = fv;
+        if (!baseRow.isPercent) {
+          planTotal += pv;
+          factTotal += fv;
+        }
+      }
+
+      merged.plan_total = baseRow.isPercent ? 0 : planTotal;
+      merged.fact_total = baseRow.isPercent ? 0 : factTotal;
+
+      return merged;
+    });
+  }, [rows, yearRows, yearMonthSlots, isMultiYear]);
+
   const columns = useMemo(() => {
     const nameCol = {
       title: 'Статья',
@@ -79,11 +131,15 @@ export const BdrTable = ({ rows, overheadExpanded, costExpanded, onToggleOverhea
       },
     };
 
-    const monthCols = buildBdrMonthColumns({ onUpdatePlan, onUpdateFact });
+    const monthCols = buildBdrMonthColumns({
+      onUpdatePlan,
+      onUpdateFact,
+      slots: isMultiYear ? yearMonthSlots : undefined,
+    });
     const totalCols = buildBdrTotalColumns();
 
     return [nameCol, ...monthCols, ...totalCols];
-  }, [overheadExpanded, costExpanded, onToggleOverhead, onToggleCost, onUpdatePlan, onUpdateFact, onOpenSub]);
+  }, [overheadExpanded, costExpanded, onToggleOverhead, onToggleCost, onUpdatePlan, onUpdateFact, onOpenSub, isMultiYear, yearMonthSlots]);
 
   const rowClassName = (record: BdrTableRow) => {
     const classes: string[] = [];
@@ -95,14 +151,18 @@ export const BdrTable = ({ rows, overheadExpanded, costExpanded, onToggleOverhea
     return classes.join(' ');
   };
 
+  const scrollX = isMultiYear && yearMonthSlots
+    ? yearMonthSlots.length * 340 + 710
+    : 'max-content';
+
   return (
     <Table<BdrTableRow>
       columns={columns}
-      dataSource={rows}
+      dataSource={dataSource}
       pagination={false}
       size="small"
       bordered
-      scroll={{ x: 'max-content' }}
+      scroll={{ x: scrollX }}
       sticky
       rowClassName={rowClassName}
       rowKey="key"

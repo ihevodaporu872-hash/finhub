@@ -10,7 +10,7 @@ export const BddsPage = () => {
   const [yearFrom, setYearFrom] = useState(currentYear);
   const [yearTo, setYearTo] = useState(currentYear);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const { sections, loading, saving, error, expandedParents, toggleParent, updateFactEntry, saveAll } = useBdds(yearFrom, yearTo, selectedProjectId);
+  const { sections, yearSections, yearMonthSlots, loading, saving, error, expandedParents, toggleParent, updateFactEntry, saveAll } = useBdds(yearFrom, yearTo, selectedProjectId);
 
   const isMultiYear = yearFrom !== yearTo;
   const isReadOnly = !selectedProjectId || isMultiYear;
@@ -57,6 +57,8 @@ export const BddsPage = () => {
       ) : (
         <BddsTable
           sections={sections}
+          yearSections={yearSections}
+          yearMonthSlots={yearMonthSlots}
           expandedParents={expandedParents}
           onToggleParent={toggleParent}
           onUpdateFact={isReadOnly ? undefined : updateFactEntry}

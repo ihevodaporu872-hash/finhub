@@ -1,12 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { BddsCategory, BddsSection, BddsRow, MonthValues } from '../types/bdds';
 import * as bddsService from '../services/bddsService';
 import * as bddsIncomeService from '../services/bddsIncomeService';
-import { SECTION_ORDER, SECTION_NAMES, MONTHS } from '../utils/constants';
+import { SECTION_ORDER, SECTION_NAMES, MONTHS, buildYearMonthSlots } from '../utils/constants';
+import type { YearMonthSlot } from '../utils/constants';
 import { calculateNetCashFlow, calculateRowTotal } from '../utils/calculations';
 
 interface IUseBddsResult {
   sections: BddsSection[];
+  yearSections: Map<number, BddsSection[]>;
+  yearMonthSlots: YearMonthSlot[];
   loading: boolean;
   saving: boolean;
   error: string | null;
@@ -17,7 +20,7 @@ interface IUseBddsResult {
 }
 
 export function useBdds(yearFrom: number, yearTo: number, projectId: string | null = null): IUseBddsResult {
-  const [sections, setSections] = useState<BddsSection[]>([]);
+  const [yearSections, setYearSections] = useState<Map<number, BddsSection[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +28,13 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
 
   const categoriesRef = useRef<BddsCategory[]>([]);
   const dirtyFactRef = useRef<Set<string>>(new Set());
+
+  const yearMonthSlots = useMemo(() => buildYearMonthSlots(yearFrom, yearTo), [yearFrom, yearTo]);
+
+  // Для обратной совместимости: sections = yearSections первого (единственного) года
+  const sections = useMemo(() => {
+    return yearSections.get(yearFrom) ?? [];
+  }, [yearSections, yearFrom]);
 
   const toggleParent = useCallback((categoryId: string) => {
     setExpandedParents((prev) => {
@@ -50,7 +60,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           .filter((c) => c.section_code === sectionCode)
           .sort((a, b) => a.sort_order - b.sort_order);
 
-        // Разделяем на родителей и детей
         const parentCats = sectionCategories.filter((c) => !c.parent_id);
         const childCats = sectionCategories.filter((c) => c.parent_id);
 
@@ -58,12 +67,10 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           let planMonths = planMap.get(cat.id) || {};
           const factMonths = factMap.get(cat.id) || {};
 
-          // Автозаполнение плана только для доходов операционной секции
           if (sectionCode === 'operating' && cat.row_type === 'income' && !cat.is_calculated) {
             planMonths = { ...incomeTotals };
           }
 
-          // Собираем дочерние строки
           const catChildren = childCats.filter((c) => c.parent_id === cat.id);
           let children: BddsRow[] | undefined;
 
@@ -80,7 +87,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
               parentId: child.parent_id,
             }));
 
-            // Родитель с formula=sum_children — сумма дочерних
             if (cat.calculation_formula === 'sum_children') {
               const sumPlan: MonthValues = {};
               const sumFact: MonthValues = {};
@@ -117,14 +123,12 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           };
         });
 
-        // Рассчитать ЧДП (план и факт)
         const ncfRow = rows.find((r) => r.isCalculated && !r.children);
         if (ncfRow) {
           const dataRows = rows.filter((r) => !r.isCalculated || r.children);
           ncfRow.months = calculateNetCashFlow(sectionCode, dataRows);
           ncfRow.total = calculateRowTotal(ncfRow.months);
 
-          // ЧДП факт — рассчитать из факт-данных строк
           const factDataRows: BddsRow[] = dataRows.map((r) => ({
             ...r,
             months: r.factMonths,
@@ -154,10 +158,9 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
       for (let y = yearFrom; y <= yearTo; y++) years.push(y);
 
       const categories = await bddsService.getCategories();
+      categoriesRef.current = categories;
 
-      const planMap = new Map<string, MonthValues>();
-      const factMap = new Map<string, MonthValues>();
-      const incomeTotals: MonthValues = {};
+      const newYearSections = new Map<number, BddsSection[]>();
 
       for (const yr of years) {
         const [planEntries, factEntries, yearIncomeTotals] = await Promise.all([
@@ -165,6 +168,9 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           bddsService.getEntries(yr, 'fact', pid),
           bddsIncomeService.getIncomeTotalsByMonth(yr, pid),
         ]);
+
+        const planMap = new Map<string, MonthValues>();
+        const factMap = new Map<string, MonthValues>();
 
         for (const entry of planEntries) {
           if (!planMap.has(entry.category_id)) planMap.set(entry.category_id, {});
@@ -178,13 +184,10 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           m[entry.month] = (m[entry.month] || 0) + Number(entry.amount);
         }
 
-        for (const month of MONTHS) {
-          incomeTotals[month.key] = (incomeTotals[month.key] || 0) + (yearIncomeTotals[month.key] || 0);
-        }
+        newYearSections.set(yr, buildSections(categories, planMap, factMap, yearIncomeTotals));
       }
 
-      categoriesRef.current = categories;
-      setSections(buildSections(categories, planMap, factMap, incomeTotals));
+      setYearSections(newYearSections);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
     } finally {
@@ -200,16 +203,19 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
     (categoryId: string, month: number, amount: number) => {
       dirtyFactRef.current.add(`${categoryId}_${month}`);
 
-      setSections((prev) =>
-        prev.map((section) => {
-          // Проверяем наличие категории в строках или дочерних
+      setYearSections((prev) => {
+        const next = new Map(prev);
+        // Редактирование только в single-year режиме
+        const secs = next.get(yearFrom);
+        if (!secs) return prev;
+
+        const updated = secs.map((section) => {
           const hasCategory = section.rows.some(
             (r) => r.categoryId === categoryId || r.children?.some((ch) => ch.categoryId === categoryId)
           );
           if (!hasCategory) return section;
 
           const updatedRows = section.rows.map((row) => {
-            // Обновление дочерней строки
             if (row.children) {
               const hasChild = row.children.some((ch) => ch.categoryId === categoryId);
               if (hasChild) {
@@ -223,7 +229,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
                   };
                 });
 
-                // Пересчитать родителя
                 const sumFact: MonthValues = {};
                 const sumPlan: MonthValues = {};
                 for (const m of MONTHS) {
@@ -251,7 +256,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
             };
           });
 
-          // Пересчитать ЧДП факт
           const ncfRow = updatedRows.find((r) => r.isCalculated && !r.children);
           if (ncfRow) {
             const dataRows = updatedRows.filter((r) => !r.isCalculated || r.children);
@@ -264,10 +268,13 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           }
 
           return { ...section, rows: [...updatedRows] };
-        })
-      );
+        });
+
+        next.set(yearFrom, updated);
+        return next;
+      });
     },
-    []
+    [yearFrom]
   );
 
   const saveAll = useCallback(async () => {
@@ -282,7 +289,8 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
         project_id?: string;
       }> = [];
 
-      for (const section of sections) {
+      const secs = yearSections.get(yearFrom) ?? [];
+      for (const section of secs) {
         for (const row of section.rows) {
           const rowsToSave = row.children ? row.children : (row.isCalculated ? [] : [row]);
           for (const r of rowsToSave) {
@@ -310,7 +318,7 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
     } finally {
       setSaving(false);
     }
-  }, [sections, yearFrom, projectId]);
+  }, [yearSections, yearFrom, projectId]);
 
-  return { sections, loading, saving, error, expandedParents, toggleParent, updateFactEntry, saveAll };
+  return { sections, yearSections, yearMonthSlots, loading, saving, error, expandedParents, toggleParent, updateFactEntry, saveAll };
 }

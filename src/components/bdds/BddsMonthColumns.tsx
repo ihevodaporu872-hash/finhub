@@ -1,5 +1,6 @@
 import type { ColumnsType } from 'antd/es/table';
 import type { BddsTableRow } from '../../types/bdds';
+import type { YearMonthSlot } from '../../utils/constants';
 import { MONTHS } from '../../utils/constants';
 import { formatAmount } from '../../utils/formatters';
 import { BddsEditableCell } from './BddsEditableCell';
@@ -19,29 +20,33 @@ function formatDeviation(plan: number, fact: number): string {
 
 interface IMonthColumnsOptions {
   onUpdateFact?: (categoryId: string, month: number, amount: number) => void;
+  slots?: YearMonthSlot[];
 }
 
 export const buildMonthColumns = (
   options: IMonthColumnsOptions
 ): ColumnsType<BddsTableRow> => {
-  const { onUpdateFact } = options;
+  const { onUpdateFact, slots } = options;
   const cols: ColumnsType<BddsTableRow> = [];
 
-  for (const m of MONTHS) {
+  const items = slots ?? MONTHS.map((m) => ({ year: 0, month: m.key, label: m.short, dataKey: String(m.key) }));
+
+  for (const slot of items) {
+    const dk = slot.dataKey;
     cols.push({
-      title: m.short,
-      key: `month_group_${m.key}`,
+      title: slot.label,
+      key: `month_group_${dk}`,
       children: [
         {
           title: 'План',
-          dataIndex: `plan_month_${m.key}`,
-          key: `plan_${m.key}`,
+          dataIndex: `plan_month_${dk}`,
+          key: `plan_${dk}`,
           width: 95,
           align: 'right',
           className: 'bdds-plan-cell',
           render: (_: unknown, record: BddsTableRow) => {
             if (record.isHeader) return null;
-            const value = record[`plan_month_${m.key}`] as number;
+            const value = record[`plan_month_${dk}`] as number;
             const display = formatAmount(value);
             return (
               <span className={value < 0 ? 'amount-negative' : ''}>
@@ -52,14 +57,14 @@ export const buildMonthColumns = (
         },
         {
           title: 'Факт',
-          dataIndex: `fact_month_${m.key}`,
-          key: `fact_${m.key}`,
+          dataIndex: `fact_month_${dk}`,
+          key: `fact_${dk}`,
           width: 95,
           align: 'right',
           className: 'bdds-fact-cell',
           render: (_: unknown, record: BddsTableRow) => {
             if (record.isHeader) return null;
-            const value = record[`fact_month_${m.key}`] as number;
+            const value = record[`fact_month_${dk}`] as number;
             const isAutoIncome = record.rowType === 'income' && record.sectionCode === 'operating';
             const readOnly = record.isCalculated || isAutoIncome || !onUpdateFact;
             return (
@@ -68,7 +73,7 @@ export const buildMonthColumns = (
                 isCalculated={readOnly}
                 onSave={(newValue) => {
                   if (record.categoryId) {
-                    onUpdateFact?.(record.categoryId, m.key, newValue);
+                    onUpdateFact?.(record.categoryId, slot.month, newValue);
                   }
                 }}
               />
@@ -77,14 +82,14 @@ export const buildMonthColumns = (
         },
         {
           title: 'Абс.',
-          key: `abs_${m.key}`,
+          key: `abs_${dk}`,
           width: 85,
           align: 'right',
           className: 'bdds-abs-cell',
           render: (_: unknown, record: BddsTableRow) => {
             if (record.isHeader) return null;
-            const plan = (record[`plan_month_${m.key}`] as number) || 0;
-            const fact = (record[`fact_month_${m.key}`] as number) || 0;
+            const plan = (record[`plan_month_${dk}`] as number) || 0;
+            const fact = (record[`fact_month_${dk}`] as number) || 0;
             const display = formatDeviation(plan, fact);
             const abs = fact - plan;
             return (
@@ -96,14 +101,14 @@ export const buildMonthColumns = (
         },
         {
           title: '%',
-          key: `rel_${m.key}`,
+          key: `rel_${dk}`,
           width: 65,
           align: 'right',
           className: 'bdds-rel-cell',
           render: (_: unknown, record: BddsTableRow) => {
             if (record.isHeader) return null;
-            const plan = (record[`plan_month_${m.key}`] as number) || 0;
-            const fact = (record[`fact_month_${m.key}`] as number) || 0;
+            const plan = (record[`plan_month_${dk}`] as number) || 0;
+            const fact = (record[`fact_month_${dk}`] as number) || 0;
             const display = formatPercent(plan, fact);
             const abs = fact - plan;
             return (
