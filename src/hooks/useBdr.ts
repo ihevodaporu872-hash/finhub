@@ -205,6 +205,11 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
             if (!base) return 0;
             return (overhead / base) * 100;
           }
+          case 'labor_cost_ratio': {
+            const cost = calcMonthVal('cost_total', month, type);
+            if (!cost) return 0;
+            return (calcMonthVal('cost_labor', month, type) / cost) * 100;
+          }
           case 'marginal_profit':
             return calcMonthVal('revenue', month, type) - calcMonthVal('cost_total', month, type);
           case 'gross_margin': {
