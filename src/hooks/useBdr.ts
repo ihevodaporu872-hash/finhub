@@ -207,6 +207,11 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
           }
           case 'marginal_profit':
             return calcMonthVal('revenue', month, type) - calcMonthVal('cost_total', month, type);
+          case 'gross_margin': {
+            const rev = calcMonthVal('revenue', month, type);
+            if (!rev) return 0;
+            return (calcMonthVal('marginal_profit', month, type) / rev) * 100;
+          }
           case 'fixed_expenses':
             if (type === 'plan') return calcMonthVal('revenue_smr', month, 'plan') * 0.2;
             if (ySub['fixed_expenses']) return ySub['fixed_expenses']?.[month] || 0;

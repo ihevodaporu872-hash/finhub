@@ -19,6 +19,7 @@ export const BDR_ROWS: BdrRowDef[] = [
 
   { code: 'overhead_ratio', name: 'Коэф.накладных расходов', isPercent: true, isCalculated: true },
   { code: 'marginal_profit', name: 'Маржинальная прибыль', isCalculated: true },
+  { code: 'gross_margin', name: 'Маржинальная (Валовая) рентабельность (Gross Margin)', isPercent: true, isCalculated: true },
   { code: 'fixed_expenses', name: 'Постоянные коммерческие и управленческие расходы (в т.ч. Амортизация) (ОФЗ)', isPlanCalculated: true, isClickable: true, subType: 'fixed_expenses' },
   { code: 'operating_profit', name: 'Операционная прибыль', isCalculated: true },
   { code: 'operating_profit_pct', name: 'В % к общей прибыли', isPercent: true, isCalculated: true },
