@@ -3,7 +3,7 @@ import type { IncomeTableRow } from '../types/bddsIncome';
 import type { Project } from '../types/projects';
 import * as bddsIncomeService from '../services/bddsIncomeService';
 import * as projectsService from '../services/projectsService';
-import { WORK_TYPES } from '../utils/workTypes';
+import { WORK_TYPES, SMR_CODES } from '../utils/workTypes';
 
 interface IUseBddsIncomeResult {
   rows: IncomeTableRow[];
@@ -94,9 +94,23 @@ export function useBddsIncome(yearFrom: number, yearTo: number): IUseBddsIncomeR
       const noteEntry = notes.find((n) => n.work_type_code === wt.code);
       row.note = noteEntry?.note ?? '';
 
-      const wtEntries = filteredEntries.filter((e) => e.work_type_code === wt.code);
-      for (const e of wtEntries) {
-        row[e.month_key] = Number(e.amount);
+      if (wt.isCalculated && wt.code === 'total_smr_no_vat') {
+        for (const mk of monthKeys) {
+          const totalSmr = SMR_CODES.reduce((sum, code) => {
+            const entry = filteredEntries.find(
+              (e) => e.work_type_code === code && e.month_key === mk
+            );
+            return sum + (entry ? Number(entry.amount) : 0);
+          }, 0);
+          const year = parseInt(mk.split('-')[0], 10);
+          const vatRate = year >= 2026 ? 22 : 20;
+          row[mk] = totalSmr * 100 / (100 + vatRate);
+        }
+      } else {
+        const wtEntries = filteredEntries.filter((e) => e.work_type_code === wt.code);
+        for (const e of wtEntries) {
+          row[e.month_key] = Number(e.amount);
+        }
       }
 
       result.push(row);
