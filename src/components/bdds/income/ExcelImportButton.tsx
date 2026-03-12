@@ -126,11 +126,20 @@ export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
           return;
         }
 
-        // Диагностика: лог нераспознанных заголовков
+        // Диагностика
+        console.log('[Импорт] Все распознанные месяцы:', monthColumns.map(m => m.key));
         if (skippedHeaders.length > 0) {
           console.warn('[Импорт] Нераспознанные заголовки:', skippedHeaders);
           message.warning(`Нераспознанные столбцы (${skippedHeaders.length}): ${skippedHeaders.slice(0, 5).join(', ')}`, 10);
         }
+
+        // Убираем дубликаты месяцев — оставляем только первое вхождение
+        const seenKeys = new Set<string>();
+        const uniqueMonthColumns = monthColumns.filter((mc) => {
+          if (seenKeys.has(mc.key)) return false;
+          seenKeys.add(mc.key);
+          return true;
+        });
 
         const result: ExcelImportData[] = [];
         const skippedNames: string[] = [];
@@ -161,7 +170,7 @@ export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
           const note = row[noteColIndex] ? String(row[noteColIndex]).trim() : '';
           const months: Record<string, number> = {};
 
-          for (const mc of monthColumns) {
+          for (const mc of uniqueMonthColumns) {
             const val = row[mc.index];
             const num = val !== undefined && val !== null && val !== ''
               ? Number(String(val).replace(/\s/g, '').replace(',', '.'))
@@ -185,12 +194,12 @@ export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
           message.warning(`Пропущено строк (${skippedNames.length}): ${skippedNames.join(', ')}`, 10);
         }
 
-        const firstMonth = monthColumns[0].key;
-        const lastMonth = monthColumns[monthColumns.length - 1].key;
+        const firstMonth = uniqueMonthColumns[0].key;
+        const lastMonth = uniqueMonthColumns[uniqueMonthColumns.length - 1].key;
 
         onImport(result);
         message.success(
-          `Импортировано: ${result.length} строк, ${monthColumns.length} месяцев (${firstMonth} — ${lastMonth})`,
+          `Импортировано: ${result.length} строк, ${uniqueMonthColumns.length} месяцев (${firstMonth} — ${lastMonth})`,
           10
         );
       } catch {
