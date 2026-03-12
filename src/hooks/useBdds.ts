@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { BddsCategory, BddsSection, BddsRow, MonthValues } from '../types/bdds';
 import * as bddsService from '../services/bddsService';
 import * as bddsIncomeService from '../services/bddsIncomeService';
+import * as bdrSubService from '../services/bdrSubService';
 import { SECTION_ORDER, SECTION_NAMES, MONTHS, buildYearMonthSlots } from '../utils/constants';
+import { BDR_SUB_TO_BDDS_NAME } from '../utils/bdrConstants';
+import type { BdrSubType } from '../types/bdr';
 import type { YearMonthSlot } from '../utils/constants';
 import { calculateNetCashFlow, calculateRowTotal } from '../utils/calculations';
 
@@ -162,11 +165,18 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
 
       const newYearSections = new Map<number, BddsSection[]>();
 
+      // Маппинг имя БДДС-категории → category_id
+      const nameToId = new Map<string, string>();
+      for (const cat of categories) {
+        nameToId.set(cat.name, cat.id);
+      }
+
       for (const yr of years) {
-        const [planEntries, factEntries, yearIncomeTotals] = await Promise.all([
+        const [planEntries, factEntries, yearIncomeTotals, bddsTotals] = await Promise.all([
           bddsService.getEntries(yr, 'plan', pid),
           bddsService.getEntries(yr, 'fact', pid),
           bddsIncomeService.getIncomeTotalsByMonth(yr, pid),
+          bdrSubService.getSubTotalsForBdds(yr, pid),
         ]);
 
         const planMap = new Map<string, MonthValues>();
@@ -182,6 +192,20 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           if (!factMap.has(entry.category_id)) factMap.set(entry.category_id, {});
           const m = factMap.get(entry.category_id)!;
           m[entry.month] = (m[entry.month] || 0) + Number(entry.amount);
+        }
+
+        // Автозаполнение БДДС факта из bdr_sub_entries (Сумма, сдвиг +1 месяц)
+        for (const [subType, months] of Object.entries(bddsTotals)) {
+          const bddsName = BDR_SUB_TO_BDDS_NAME[subType as BdrSubType];
+          if (!bddsName) continue;
+          const catId = nameToId.get(bddsName);
+          if (!catId) continue;
+
+          if (!factMap.has(catId)) factMap.set(catId, {});
+          const m = factMap.get(catId)!;
+          for (const [month, amount] of Object.entries(months)) {
+            m[Number(month)] = (m[Number(month)] || 0) + amount;
+          }
         }
 
         newYearSections.set(yr, buildSections(categories, planMap, factMap, yearIncomeTotals));

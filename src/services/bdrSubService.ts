@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import type { BdrSubEntry, BdrSubEntryFormData, BdrSubType } from '../types/bdr';
+import { NDS_SUB_TYPES } from '../types/bdr';
 
 function lastDayOfMonth(year: number, month: number): string {
   const d = new Date(year, month, 0).getDate();
@@ -77,9 +78,10 @@ export async function getSubTotalsByMonth(
   year: number,
   projectId?: string
 ): Promise<Record<number, number>> {
+  const useNds = NDS_SUB_TYPES.includes(subType);
   let query = supabase
     .from('bdr_sub_entries')
-    .select('entry_date, amount')
+    .select(useNds ? 'entry_date, amount_without_nds' : 'entry_date, amount')
     .eq('sub_type', subType)
     .gte('entry_date', `${year}-01-01`)
     .lte('entry_date', `${year}-12-31`);
@@ -94,7 +96,8 @@ export async function getSubTotalsByMonth(
   const totals: Record<number, number> = {};
   for (const e of data) {
     const month = new Date(e.entry_date).getMonth() + 1;
-    totals[month] = (totals[month] || 0) + Number(e.amount);
+    const val = useNds ? (Number(e.amount_without_nds) || 0) : Number(e.amount);
+    totals[month] = (totals[month] || 0) + val;
   }
   return totals;
 }
@@ -106,7 +109,7 @@ export async function getMultiSubTotalsByMonth(
 ): Promise<Record<string, Record<number, number>>> {
   let query = supabase
     .from('bdr_sub_entries')
-    .select('sub_type, entry_date, amount')
+    .select('sub_type, entry_date, amount, amount_without_nds')
     .in('sub_type', subTypes)
     .gte('entry_date', `${year}-01-01`)
     .lte('entry_date', `${year}-12-31`);
@@ -123,7 +126,9 @@ export async function getMultiSubTotalsByMonth(
     const st = e.sub_type as string;
     if (!result[st]) result[st] = {};
     const month = new Date(e.entry_date).getMonth() + 1;
-    result[st][month] = (result[st][month] || 0) + Number(e.amount);
+    const useNds = NDS_SUB_TYPES.includes(st as BdrSubType);
+    const val = useNds ? (Number(e.amount_without_nds) || 0) : Number(e.amount);
+    result[st][month] = (result[st][month] || 0) + val;
   }
   return result;
 }
@@ -178,6 +183,59 @@ export async function getFixedExpensesTotalsByMonth(
     totals[month] = (totals[month] || 0) + value;
   }
   return totals;
+}
+
+export async function getSubTotalsForBdds(
+  year: number,
+  projectId?: string
+): Promise<Record<string, Record<number, number>>> {
+  // Текущий год + декабрь прошлого года (→ январь текущего)
+  let q1 = supabase
+    .from('bdr_sub_entries')
+    .select('sub_type, entry_date, amount')
+    .in('sub_type', NDS_SUB_TYPES)
+    .gte('entry_date', `${year}-01-01`)
+    .lte('entry_date', `${year}-12-31`);
+
+  let q2 = supabase
+    .from('bdr_sub_entries')
+    .select('sub_type, entry_date, amount')
+    .in('sub_type', NDS_SUB_TYPES)
+    .gte('entry_date', `${year - 1}-12-01`)
+    .lte('entry_date', `${year - 1}-12-31`);
+
+  if (projectId) {
+    q1 = q1.eq('project_id', projectId);
+    q2 = q2.eq('project_id', projectId);
+  }
+
+  const [res1, res2] = await Promise.all([q1, q2]);
+  if (res1.error) throw res1.error;
+  if (res2.error) throw res2.error;
+
+  const allData = [...(res1.data || []), ...(res2.data || [])];
+
+  const result: Record<string, Record<number, number>> = {};
+  for (const e of allData) {
+    const st = e.sub_type as string;
+    const d = new Date(e.entry_date);
+    const origMonth = d.getMonth() + 1;
+    const origYear = d.getFullYear();
+
+    // Сдвиг +1 месяц
+    let targetMonth: number;
+    if (origYear === year - 1 && origMonth === 12) {
+      targetMonth = 1;
+    } else if (origYear === year && origMonth <= 11) {
+      targetMonth = origMonth + 1;
+    } else {
+      continue; // декабрь текущего года → январь следующего (пропускаем)
+    }
+
+    if (!result[st]) result[st] = {};
+    result[st][targetMonth] = (result[st][targetMonth] || 0) + Number(e.amount);
+  }
+  return result;
 }
 
 export async function importSubEntries(entries: BdrSubEntryFormData[]): Promise<number> {

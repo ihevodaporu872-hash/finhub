@@ -61,6 +61,37 @@ export const BDR_OVERHEAD_ROWS: BdrRowDef[] = [
 
 export const OVERHEAD_CODES = BDR_OVERHEAD_ROWS.map((r) => r.code);
 
+// Маппинг BDR sub_type → имя БДДС-категории (для автозаполнения БДДС факта)
+export const BDR_SUB_TO_BDDS_NAME: Partial<Record<BdrSubType, string>> = {
+  materials: 'Материальные расходы (Закупка материалов)',
+  subcontract: 'Субподряд',
+  design: 'Проектные работы',
+  rental: 'Аренда БК и подъемников',
+  overhead_02: 'Водопотребление, водоотведение',
+  overhead_03: 'Электроснабжение',
+  overhead_04: 'Теплоснабжение',
+  overhead_05: 'Охрана',
+  overhead_06: 'Налоги и сборы',
+  overhead_07: 'Комиссия по банковским гарантиям',
+  overhead_08: 'Аренда строительного оборудования, механизмов, техники',
+  overhead_09: 'Аренда ДГУ и котельных',
+  overhead_10: 'Аренда автотранспорта',
+  overhead_11: 'Аренда экскаваторов и погрузчиков',
+  overhead_12: 'Аренда помещений, территорий, участков',
+  overhead_13: 'Разр.и согл. Инстанции',
+  overhead_14: 'Списание ОС',
+  overhead_15: 'Списание (опалубка)',
+  overhead_16: 'Списание (леса)',
+  overhead_17: 'Услуги связи',
+  overhead_18: 'Доп.выплаты сотрудникам',
+  overhead_19: 'Штрафы',
+  overhead_20: 'Проживание рабочих и линейщиков',
+  overhead_21: 'Возмещение затрат заказчику',
+  overhead_22: 'Страхование',
+  overhead_23: 'Работы и затраты гарантийного периода',
+  overhead_24: 'Прочие затраты и услуги',
+};
+
 export const COST_ROW_CODES = [
   'cost_materials',
   'cost_labor',
