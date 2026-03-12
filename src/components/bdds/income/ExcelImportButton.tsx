@@ -48,18 +48,37 @@ function parseMonthHeader(header: unknown): string | null {
   const isoMatch = trimmed.match(/^(\d{4})-(\d{2})$/);
   if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}`;
 
-  // "01.2026"
-  const dotMatch = trimmed.match(/^(\d{2})\.(\d{4})$/);
-  if (dotMatch) return `${dotMatch[2]}-${dotMatch[1]}`;
+  // "01.2026", "1.2028"
+  const dotMatch = trimmed.match(/^(\d{1,2})\.(\d{4})$/);
+  if (dotMatch) return `${dotMatch[2]}-${dotMatch[1].padStart(2, '0')}`;
 
-  // "Янв 2026", "Январь 2026", "Янв. 2026"
-  const textMatch = trimmed.toLowerCase().match(/^([a-zа-яё]+)\.?\s+(\d{4})$/);
+  // "Янв 2026", "Январь 2026", "Янв. 2026", "янв.2026"
+  const textMatch = trimmed.toLowerCase().match(/^([a-zа-яё]+)\.?\s*(\d{4})$/);
   if (textMatch) {
     const monthNum = MONTH_NAMES[textMatch[1]];
     if (monthNum) return `${textMatch[2]}-${monthNum}`;
   }
 
   return null;
+}
+
+/** Получить форматированное значение ячейки заголовка */
+function getHeaderCellValue(sheet: XLSX.WorkSheet, row: number, col: number): unknown {
+  const addr = XLSX.utils.encode_cell({ r: row, c: col });
+  const cell = sheet[addr];
+  if (!cell) return undefined;
+
+  // Приоритет: форматированное значение (w) > raw значение (v)
+  // w содержит текст как он отображается в Excel (напр. "Янв 2028")
+  if (cell.w) return cell.w;
+
+  // Для дат — конвертировать в Date
+  if (cell.t === 'd' && cell.v instanceof Date) return cell.v;
+
+  // Для чисел с форматом даты — конвертировать
+  if (cell.t === 'n' && typeof cell.v === 'number') return cell.v;
+
+  return cell.v;
 }
 
 export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
@@ -75,21 +94,30 @@ export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
+        const jsonData = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
 
         if (jsonData.length < 2) {
           message.error('Файл пуст или содержит только заголовки');
           return;
         }
 
-        const headers = jsonData[0];
-        // Первый столбец — наименование, второй — примечание, далее — месяцы
-        const monthColumns: Array<{ index: number; key: string }> = [];
+        // Определяем диапазон столбцов из sheet
+        const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+        const headerRow = range.s.r;
 
-        for (let i = 2; i < headers.length; i++) {
-          const mk = parseMonthHeader(headers[i]);
+        const monthColumns: Array<{ index: number; key: string }> = [];
+        const skippedHeaders: string[] = [];
+
+        for (let c = 2; c <= range.e.c; c++) {
+          const cellValue = getHeaderCellValue(sheet, headerRow, c);
+          const mk = parseMonthHeader(cellValue);
           if (mk) {
-            monthColumns.push({ index: i, key: mk });
+            monthColumns.push({ index: c, key: mk });
+          } else if (cellValue !== undefined && cellValue !== null) {
+            const str = String(cellValue).trim();
+            if (str && str.toLowerCase() !== 'итого') {
+              skippedHeaders.push(str);
+            }
           }
         }
 
@@ -98,15 +126,19 @@ export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
           return;
         }
 
+        // Диагностика: лог нераспознанных заголовков
+        if (skippedHeaders.length > 0) {
+          console.warn('[Импорт] Нераспознанные заголовки:', skippedHeaders);
+          message.warning(`Нераспознанные столбцы (${skippedHeaders.length}): ${skippedHeaders.slice(0, 5).join(', ')}`, 10);
+        }
+
         const result: ExcelImportData[] = [];
         const skippedNames: string[] = [];
 
         for (let r = 1; r < jsonData.length; r++) {
-          const row = jsonData[r];
+          const row = jsonData[r] as unknown[];
           if (!row) continue;
 
-          // Ищем имя вида работ в первых трёх столбцах (col 0, 1, 2)
-          // В Excel могут быть объединённые ячейки, из-за чего имя попадает в другой столбец
           let workType;
           let noteColIndex = 1;
 
@@ -153,15 +185,20 @@ export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
           message.warning(`Пропущено строк (${skippedNames.length}): ${skippedNames.join(', ')}`, 10);
         }
 
+        const firstMonth = monthColumns[0].key;
+        const lastMonth = monthColumns[monthColumns.length - 1].key;
+
         onImport(result);
-        message.success(`Импортировано: ${result.length} строк, ${monthColumns.length} месяцев`);
+        message.success(
+          `Импортировано: ${result.length} строк, ${monthColumns.length} месяцев (${firstMonth} — ${lastMonth})`,
+          10
+        );
       } catch {
         message.error('Ошибка чтения файла Excel');
       }
     };
 
     reader.readAsArrayBuffer(file);
-    // Сбросить input чтобы можно было загрузить тот же файл повторно
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 

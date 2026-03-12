@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase';
 import type { BddsIncomeEntry, BddsIncomeNote } from '../types/bddsIncome';
 
 export async function getEntries(projectId?: string): Promise<BddsIncomeEntry[]> {
-  const PAGE_SIZE = 1000;
+  const PAGE_SIZE = 5000;
   const allData: BddsIncomeEntry[] = [];
   let from = 0;
 
