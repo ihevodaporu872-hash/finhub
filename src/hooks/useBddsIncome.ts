@@ -108,14 +108,6 @@ export function useBddsIncome(yearFrom: number, yearTo: number): IUseBddsIncomeR
             const year = parseInt(mk.split('-')[0], 10);
             const vatRate = year >= 2026 ? 22 : 20;
             sum = totalSmr * 100 / (100 + vatRate);
-          } else if (wt.code === 'total_income') {
-            const prevMk = getPrevMonthKey(mk);
-            const totalSmrPrev = calcGroupSum(SMR_CODES, prevMk);
-            const advanceIncome = calcCodeSum('advance_income', mk);
-            const advanceOffsetPrev = calcCodeSum('advance_offset', prevMk);
-            const guaranteeRetentionPrev = calcCodeSum('guarantee_retention', prevMk);
-            const guaranteeReturn = calcCodeSum('guarantee_return', mk);
-            sum = totalSmrPrev + advanceIncome - advanceOffsetPrev - guaranteeRetentionPrev + guaranteeReturn;
           }
           row[mk] = sum;
         }
@@ -139,19 +131,7 @@ export function useBddsIncome(yearFrom: number, yearTo: number): IUseBddsIncomeR
       .reduce((sum, e) => sum + Number(e.amount), 0);
   }
 
-  function calcCodeSum(code: string, monthKey: string): number {
-    return filteredEntries
-      .filter((e) => e.work_type_code === code && e.month_key === monthKey)
-      .reduce((sum, e) => sum + Number(e.amount), 0);
-  }
 
-  function getPrevMonthKey(monthKey: string): string {
-    const [yearStr, monthStr] = monthKey.split('-');
-    let y = parseInt(yearStr, 10);
-    let m = parseInt(monthStr, 10) - 1;
-    if (m === 0) { m = 12; y -= 1; }
-    return `${y}-${String(m).padStart(2, '0')}`;
-  }
 
   const importData = useCallback(
     async (
