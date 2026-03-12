@@ -194,15 +194,15 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           m[entry.month] = (m[entry.month] || 0) + Number(entry.amount);
         }
 
-        // Автозаполнение БДДС факта из bdr_sub_entries (Сумма, сдвиг +1 месяц)
+        // Автозаполнение БДДС плана из bdr_sub_entries (Сумма, сдвиг +1 месяц)
         for (const [subType, months] of Object.entries(bddsTotals)) {
           const bddsName = BDR_SUB_TO_BDDS_NAME[subType as BdrSubType];
           if (!bddsName) continue;
           const catId = nameToId.get(bddsName);
           if (!catId) continue;
 
-          if (!factMap.has(catId)) factMap.set(catId, {});
-          const m = factMap.get(catId)!;
+          if (!planMap.has(catId)) planMap.set(catId, {});
+          const m = planMap.get(catId)!;
           for (const [month, amount] of Object.entries(months)) {
             m[Number(month)] = (m[Number(month)] || 0) + amount;
           }
