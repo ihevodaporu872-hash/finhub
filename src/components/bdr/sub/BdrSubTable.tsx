@@ -1,6 +1,7 @@
 import { Table, Button, Popconfirm, Space } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { BdrSubEntry, BdrSubType } from '../../../types/bdr';
+import { NDS_SUB_TYPES } from '../../../types/bdr';
 import { formatAmount } from '../../../utils/formatters';
 
 interface IProps {
@@ -51,6 +52,7 @@ const amountColumn = {
 export const BdrSubTable = ({ subType, entries, loading, onEdit, onDelete }: IProps) => {
   const isOverheadLabor = subType === 'overhead_labor';
   const isFixedExpenses = subType === 'fixed_expenses';
+  const hasNds = NDS_SUB_TYPES.includes(subType);
 
   const MONTH_NAMES = [
     '', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -128,6 +130,32 @@ export const BdrSubTable = ({ subType, entries, loading, onEdit, onDelete }: IPr
           key: 'description',
         },
         amountColumn,
+        ...(hasNds ? [
+          {
+            title: 'Сумма НДС',
+            dataIndex: 'amount_nds',
+            key: 'amount_nds',
+            width: 140,
+            align: 'right' as const,
+            render: (value: number) => (
+              <span className={value < 0 ? 'amount-negative' : ''}>
+                {formatAmount(value)}
+              </span>
+            ),
+          },
+          {
+            title: 'Сумма без НДС',
+            dataIndex: 'amount_without_nds',
+            key: 'amount_without_nds',
+            width: 140,
+            align: 'right' as const,
+            render: (value: number) => (
+              <span className={value < 0 ? 'amount-negative' : ''}>
+                {formatAmount(value)}
+              </span>
+            ),
+          },
+        ] : []),
         actionsColumn(onEdit, onDelete),
       ];
 

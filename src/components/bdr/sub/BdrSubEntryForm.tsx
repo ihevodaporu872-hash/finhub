@@ -1,5 +1,6 @@
 import { Modal, Form, Input, InputNumber, DatePicker, Select } from 'antd';
 import type { BdrSubEntry, BdrSubEntryFormData, BdrSubType } from '../../../types/bdr';
+import { NDS_SUB_TYPES } from '../../../types/bdr';
 import type { Project } from '../../../types/projects';
 import dayjs from 'dayjs';
 
@@ -30,6 +31,7 @@ export const BdrSubEntryForm = ({
   const isOverheadLabor = subType === 'overhead_labor';
   const isFixedExpenses = subType === 'fixed_expenses';
   const isSimpleForm = isOverheadLabor || isFixedExpenses;
+  const hasNds = NDS_SUB_TYPES.includes(subType);
 
   const getEntryDate = (): string => {
     const month = selectedMonth ?? new Date().getMonth() + 1;
@@ -47,6 +49,10 @@ export const BdrSubEntryForm = ({
       company: isFixedExpenses ? '' : (values.company || ''),
       description: isSimpleForm ? '' : (values.description || ''),
       amount: values.amount || 0,
+      ...(hasNds ? {
+        amount_nds: values.amount_nds || 0,
+        amount_without_nds: values.amount_without_nds || 0,
+      } : {}),
     };
     await onSave(data);
     form.resetFields();
@@ -59,6 +65,10 @@ export const BdrSubEntryForm = ({
         company: editingEntry.company,
         description: editingEntry.description,
         amount: editingEntry.amount,
+        ...(hasNds ? {
+          amount_nds: editingEntry.amount_nds,
+          amount_without_nds: editingEntry.amount_without_nds,
+        } : {}),
       }
     : {
         project_id: selectedProjectId,
@@ -121,6 +131,24 @@ export const BdrSubEntryForm = ({
             parser={(val) => val ? Number(val.replace(/\s/g, '')) : 0}
           />
         </Form.Item>
+        {hasNds && (
+          <>
+            <Form.Item name="amount_nds" label="Сумма НДС">
+              <InputNumber
+                className="w-full"
+                formatter={(val) => val ? `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                parser={(val) => val ? Number(val.replace(/\s/g, '')) : 0}
+              />
+            </Form.Item>
+            <Form.Item name="amount_without_nds" label="Сумма без НДС">
+              <InputNumber
+                className="w-full"
+                formatter={(val) => val ? `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                parser={(val) => val ? Number(val.replace(/\s/g, '')) : 0}
+              />
+            </Form.Item>
+          </>
+        )}
       </Form>
     </Modal>
   );

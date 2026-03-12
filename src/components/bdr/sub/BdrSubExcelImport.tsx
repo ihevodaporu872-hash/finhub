@@ -3,6 +3,7 @@ import { Button, message, notification } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import type { BdrSubEntryFormData, BdrSubType } from '../../../types/bdr';
+import { NDS_SUB_TYPES } from '../../../types/bdr';
 
 interface IProps {
   subType: BdrSubType;
@@ -17,6 +18,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   department: ['отдел/сотрудник', 'отдел', 'сотрудник', 'department', 'employee'],
   description: ['содержание', 'description', 'описание', 'наименование', 'назначение'],
   amount: ['сумма', 'amount', 'стоимость', 'итого', 'расходы с учетом офз'],
+  amount_nds: ['сумма ндс', 'ндс', 'nds', 'vat'],
+  amount_without_nds: ['сумма без ндс', 'без ндс', 'amount without nds', 'amount_without_nds'],
   ofz: ['офз за год', 'офз', 'ofz'],
   date: ['дата', 'date'],
   period: ['период', 'period', 'месяц'],
@@ -249,14 +252,21 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
             continue;
           }
 
-          entries.push({
+          const entry: BdrSubEntryFormData = {
             sub_type: subType,
             project_id: projectId,
             entry_date: entryDate,
             company,
             description,
             amount,
-          });
+          };
+
+          if (NDS_SUB_TYPES.includes(subType)) {
+            entry.amount_nds = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount_nds));
+            entry.amount_without_nds = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount_without_nds));
+          }
+
+          entries.push(entry);
         }
       }
 

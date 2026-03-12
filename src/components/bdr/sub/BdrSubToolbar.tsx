@@ -2,6 +2,7 @@ import { Button, Select, Space } from 'antd';
 import { PlusOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import type { BdrSubEntry, BdrSubType, BdrSubEntryFormData } from '../../../types/bdr';
+import { NDS_SUB_TYPES } from '../../../types/bdr';
 import type { Project } from '../../../types/projects';
 import { BdrSubExcelImport } from './BdrSubExcelImport';
 import { MONTHS } from '../../../utils/constants';
@@ -47,6 +48,16 @@ export const BdrSubToolbar = ({
           '№п/п': i + 1,
           'Отдел/Сотрудник': e.company,
           'Сумма': e.amount,
+        }))
+      : NDS_SUB_TYPES.includes(subType)
+      ? entries.map((e, i) => ({
+          '№п/п': i + 1,
+          'Фирма': e.company,
+          'Дата': new Date(e.entry_date).toLocaleDateString('ru-RU'),
+          'Содержание': e.description,
+          'Сумма': e.amount,
+          'Сумма НДС': e.amount_nds || 0,
+          'Сумма без НДС': e.amount_without_nds || 0,
         }))
       : entries.map((e, i) => ({
           '№п/п': i + 1,

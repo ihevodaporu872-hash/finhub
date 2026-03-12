@@ -28,6 +28,8 @@ export interface BdrSubEntry {
   company: string;
   description: string;
   amount: number;
+  amount_nds: number;
+  amount_without_nds: number;
   created_at: string;
 }
 
@@ -38,7 +40,11 @@ export interface BdrSubEntryFormData {
   company: string;
   description: string;
   amount: number;
+  amount_nds?: number;
+  amount_without_nds?: number;
 }
+
+export const NDS_SUB_TYPES: BdrSubType[] = ['materials', 'subcontract', 'design', 'rental'];
 
 export interface BdrRowDef {
   code: string;
