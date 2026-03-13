@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase';
 import type { BdrSubEntry, BdrSubEntryFormData, BdrSubType } from '../types/bdr';
 import { NDS_SUB_TYPES } from '../types/bdr';
+import { BDDS_PLAN_SUB_TYPES } from '../utils/bdrConstants';
 
 function lastDayOfMonth(year: number, month: number): string {
   const d = new Date(year, month, 0).getDate();
@@ -193,14 +194,14 @@ export async function getSubTotalsForBdds(
   let q1 = supabase
     .from('bdr_sub_entries')
     .select('sub_type, entry_date, amount')
-    .in('sub_type', NDS_SUB_TYPES)
+    .in('sub_type', BDDS_PLAN_SUB_TYPES)
     .gte('entry_date', `${year}-01-01`)
     .lte('entry_date', `${year}-12-31`);
 
   let q2 = supabase
     .from('bdr_sub_entries')
     .select('sub_type, entry_date, amount')
-    .in('sub_type', NDS_SUB_TYPES)
+    .in('sub_type', BDDS_PLAN_SUB_TYPES)
     .gte('entry_date', `${year - 1}-12-01`)
     .lte('entry_date', `${year - 1}-12-31`);
 

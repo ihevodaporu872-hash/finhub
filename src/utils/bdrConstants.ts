@@ -64,6 +64,7 @@ export const OVERHEAD_CODES = BDR_OVERHEAD_ROWS.map((r) => r.code);
 // Маппинг BDR sub_type → имя БДДС-категории (для автозаполнения БДДС факта)
 export const BDR_SUB_TO_BDDS_NAME: Partial<Record<BdrSubType, string>> = {
   materials: 'Материальные расходы (Закупка материалов)',
+  labor: 'ФОТ основных рабочих',
   subcontract: 'Субподряд',
   design: 'Проектные работы',
   rental: 'Аренда БК и подъемников',
@@ -91,6 +92,9 @@ export const BDR_SUB_TO_BDDS_NAME: Partial<Record<BdrSubType, string>> = {
   overhead_23: 'Работы и затраты гарантийного периода',
   overhead_24: 'Прочие затраты и услуги',
 };
+
+// Sub-типы, для которых БДДС план заполняется из bdr_sub_entries (Сумма, сдвиг +1 месяц)
+export const BDDS_PLAN_SUB_TYPES = Object.keys(BDR_SUB_TO_BDDS_NAME) as BdrSubType[];
 
 export const COST_ROW_CODES = [
   'cost_materials',
