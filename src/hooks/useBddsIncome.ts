@@ -158,8 +158,14 @@ export function useBddsIncome(yearFrom: number, yearTo: number): IUseBddsIncomeR
         }
       }
 
-      // Удалить старые данные перед импортом
-      await bddsIncomeService.deleteProjectEntries(projectId);
+      // Собрать уникальные месяцы из импорта
+      const monthKeysSet = new Set<string>();
+      for (const entry of entriesToUpsert) {
+        monthKeysSet.add(entry.month_key);
+      }
+
+      // Удалить старые данные только за импортируемые периоды
+      await bddsIncomeService.deleteEntriesByMonths(projectId, Array.from(monthKeysSet));
 
       await Promise.all([
         bddsIncomeService.upsertEntries(entriesToUpsert),

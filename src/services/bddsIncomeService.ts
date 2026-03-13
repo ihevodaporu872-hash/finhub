@@ -153,3 +153,14 @@ export async function deleteProjectEntries(projectId: string): Promise<void> {
     .eq('project_id', projectId);
   if (e2) throw e2;
 }
+
+export async function deleteEntriesByMonths(projectId: string, monthKeys: string[]): Promise<void> {
+  if (monthKeys.length === 0) return;
+
+  const { error } = await supabase
+    .from('bdds_income_entries')
+    .delete()
+    .eq('project_id', projectId)
+    .in('month_key', monthKeys);
+  if (error) throw error;
+}
