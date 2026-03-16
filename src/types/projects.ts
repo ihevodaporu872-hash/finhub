@@ -17,4 +17,6 @@ export interface ProjectFormData {
   related_names: string;
   description: string;
   is_active: boolean;
+  start_date: string | null;
+  gu_return_date: string | null;
 }

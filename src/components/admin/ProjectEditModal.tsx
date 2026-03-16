@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Modal, Form, Input, Switch } from 'antd';
+import { Modal, Form, Input, Switch, DatePicker } from 'antd';
+import dayjs from 'dayjs';
 import type { Project, ProjectFormData } from '../../types/projects';
 
 const { TextArea } = Input;
@@ -13,7 +14,7 @@ interface IProps {
 }
 
 export const ProjectEditModal = ({ open, project, loading, onSave, onCancel }: IProps) => {
-  const [form] = Form.useForm<ProjectFormData>();
+  const [form] = Form.useForm();
 
   useEffect(() => {
     if (open) {
@@ -24,6 +25,8 @@ export const ProjectEditModal = ({ open, project, loading, onSave, onCancel }: I
           related_names: project.related_names,
           description: project.description,
           is_active: project.is_active,
+          start_date: project.start_date ? dayjs(project.start_date) : null,
+          gu_return_date: project.gu_return_date ? dayjs(project.gu_return_date) : null,
         });
       } else {
         form.resetFields();
@@ -35,7 +38,12 @@ export const ProjectEditModal = ({ open, project, loading, onSave, onCancel }: I
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
-      onSave(values);
+      const formData: ProjectFormData = {
+        ...values,
+        start_date: values.start_date ? values.start_date.format('YYYY-MM-DD') : null,
+        gu_return_date: values.gu_return_date ? values.gu_return_date.format('YYYY-MM-DD') : null,
+      };
+      onSave(formData);
     } catch {
       // validation errors shown by form
     }
@@ -78,6 +86,12 @@ export const ProjectEditModal = ({ open, project, loading, onSave, onCancel }: I
           label="Описание"
         >
           <TextArea rows={3} placeholder="Описание проекта" />
+        </Form.Item>
+        <Form.Item name="start_date" label="Дата начала строительства">
+          <DatePicker format="DD.MM.YYYY" style={{ width: '100%' }} placeholder="Выберите дату" />
+        </Form.Item>
+        <Form.Item name="gu_return_date" label="Дата возврата ГУ">
+          <DatePicker format="DD.MM.YYYY" style={{ width: '100%' }} placeholder="Выберите дату" />
         </Form.Item>
         <Form.Item
           name="is_active"

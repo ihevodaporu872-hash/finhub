@@ -20,6 +20,8 @@ export async function createProject(formData: ProjectFormData): Promise<Project>
       related_names: formData.related_names,
       description: formData.description,
       is_active: formData.is_active,
+      start_date: formData.start_date,
+      gu_return_date: formData.gu_return_date,
     })
     .select()
     .single();
@@ -40,6 +42,8 @@ export async function updateProject(
       related_names: formData.related_names,
       description: formData.description,
       is_active: formData.is_active,
+      start_date: formData.start_date,
+      gu_return_date: formData.gu_return_date,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
