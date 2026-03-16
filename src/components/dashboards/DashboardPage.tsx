@@ -7,6 +7,7 @@ import { DashboardToolbar } from './DashboardToolbar';
 import { BdrDashboard } from './bdr/BdrDashboard';
 import { BdrDashboard2 } from './bdr2/BdrDashboard2';
 import { BddsDashboard } from './bdds/BddsDashboard';
+import type { Project } from '../../types/projects';
 
 const currentYear = new Date().getFullYear();
 
@@ -24,6 +25,20 @@ export const DashboardPage = () => {
     setYearTo(y);
     if (y < yearFrom) setYearFrom(y);
   }, [yearFrom]);
+
+  const handleProjectChange = useCallback((projectId: string | null, project: Project | null) => {
+    setSelectedProjectId(projectId);
+    if (project?.start_date) {
+      setYearFrom(new Date(project.start_date).getFullYear());
+    } else if (!projectId) {
+      setYearFrom(currentYear);
+    }
+    if (project?.gu_return_date) {
+      setYearTo(new Date(project.gu_return_date).getFullYear());
+    } else if (!projectId) {
+      setYearTo(currentYear);
+    }
+  }, []);
 
   const { bdrData, bddsData, loading, error } = useDashboard(yearFrom, yearTo, selectedProjectId);
   const { data: bubbleData, loading: bubbleLoading, error: bubbleError } = useBdrBubbleData(yearFrom, yearTo);
@@ -59,7 +74,7 @@ export const DashboardPage = () => {
         onYearFromChange={handleYearFromChange}
         onYearToChange={handleYearToChange}
         selectedProjectId={selectedProjectId}
-        onProjectChange={setSelectedProjectId}
+        onProjectChange={handleProjectChange}
       />
       <Tabs items={items} defaultActiveKey="bdr" />
     </Card>

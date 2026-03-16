@@ -5,6 +5,8 @@ export interface Project {
   related_names: string;
   description: string;
   is_active: boolean;
+  start_date: string | null;
+  gu_return_date: string | null;
   created_at: string;
   updated_at: string;
 }

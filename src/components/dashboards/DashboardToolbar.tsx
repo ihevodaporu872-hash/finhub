@@ -11,7 +11,7 @@ interface IProps {
   onYearFromChange: (year: number) => void;
   onYearToChange: (year: number) => void;
   selectedProjectId: string | null;
-  onProjectChange: (projectId: string | null) => void;
+  onProjectChange: (projectId: string | null, project: Project | null) => void;
 }
 
 export const DashboardToolbar: FC<IProps> = ({
@@ -37,7 +37,7 @@ export const DashboardToolbar: FC<IProps> = ({
       <div className="dashboard-project-tags">
         <Tag.CheckableTag
           checked={selectedProjectId === null}
-          onChange={() => onProjectChange(null)}
+          onChange={() => onProjectChange(null, null)}
         >
           Все проекты
         </Tag.CheckableTag>
@@ -45,7 +45,7 @@ export const DashboardToolbar: FC<IProps> = ({
           <Tag.CheckableTag
             key={p.id}
             checked={selectedProjectId === p.id}
-            onChange={(checked) => onProjectChange(checked ? p.id : null)}
+            onChange={(checked) => onProjectChange(checked ? p.id : null, checked ? p : null)}
           >
             {p.name}
           </Tag.CheckableTag>
