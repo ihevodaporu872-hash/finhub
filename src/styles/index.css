@@ -231,6 +231,24 @@ body {
   margin-bottom: 24px;
 }
 
+.dashboard-toolbar {
+  margin-bottom: 16px;
+}
+
+.dashboard-project-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.dashboard-project-tags .ant-tag-checkable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
 .dashboard-chart-card {
   margin-bottom: 16px;
 }
