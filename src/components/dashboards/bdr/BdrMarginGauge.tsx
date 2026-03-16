@@ -1,7 +1,6 @@
 import type { FC } from 'react';
-import { Card, Tooltip } from 'antd';
+import { Card, Tooltip, Progress } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Gauge } from '@ant-design/charts';
 import type { IBdrDashboardData } from '../../../types/dashboard';
 
 interface IProps {
@@ -26,30 +25,16 @@ const HELP_TEXT = `1. Тренды: куда идёт линия?
 4. Анализ «Маржа vs Объём»
 При росте объёма выручки маржинальность часто падает — для крупных объектов приходится демпинговать. На графике это «ножницы»: работы много, а денег на развитие нет.`;
 
-export const BdrMarginGauge: FC<IProps> = ({ data }) => {
-  const percent = Math.max(0, Math.min(data.marginPercent / 100, 1));
+function getColor(percent: number): string {
+  if (percent < 5) return '#cf1322';
+  if (percent < 15) return '#faad14';
+  return '#3f8600';
+}
 
-  const config = {
-    percent,
-    range: {
-      color: ['#cf1322', '#faad14', '#3f8600'],
-      width: 12,
-    },
-    indicator: {
-      pointer: { style: { stroke: '#D0D0D0' } },
-      pin: { style: { stroke: '#D0D0D0' } },
-    },
-    statistic: {
-      content: {
-        formatter: () => data.marginPercent.toFixed(1) + '%',
-        style: { fontSize: '24px', color: '#333' },
-      },
-      title: {
-        formatter: () => 'Маржинальность',
-        style: { fontSize: '14px', color: '#999' },
-      },
-    },
-  };
+export const BdrMarginGauge: FC<IProps> = ({ data }) => {
+  const pct = data.marginPercent;
+  const clampedPct = Math.max(0, Math.min(pct, 100));
+  const color = getColor(pct);
 
   const title = (
     <span>
@@ -62,7 +47,20 @@ export const BdrMarginGauge: FC<IProps> = ({ data }) => {
 
   return (
     <Card title={title} size="small" className="dashboard-chart-card">
-      <Gauge {...config} height={300} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300 }}>
+        <Progress
+          type="dashboard"
+          percent={clampedPct}
+          strokeColor={color}
+          size={220}
+          format={() => (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 700, color }}>{pct.toFixed(1)}%</div>
+              <div style={{ fontSize: 14, color: '#999' }}>Маржинальность</div>
+            </div>
+          )}
+        />
+      </div>
     </Card>
   );
 };
