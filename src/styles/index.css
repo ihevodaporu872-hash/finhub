@@ -251,6 +251,12 @@ body {
   font-size: 12px;
 }
 
+.bdr-bubble-help-icon {
+  color: #1890ff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
 /* Контроль ГУ */
 .guarantee-toolbar {
   margin-bottom: 16px;

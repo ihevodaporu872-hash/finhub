@@ -32,6 +32,13 @@ export interface IBdrDashboardData {
   };
 }
 
+export interface IBubbleDataPoint {
+  project: string;
+  revenue: number;
+  profitability: number;
+  nzp: number;
+}
+
 export interface IBddsDashboardData {
   planFactIncome: IMonthDataPoint[];
   ncfBySection: IMonthDataPoint[];
