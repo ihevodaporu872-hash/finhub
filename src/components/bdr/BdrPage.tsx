@@ -20,10 +20,8 @@ export const BdrPage = () => {
     error,
     overheadExpanded,
     costExpanded,
-    receiptExpanded,
     toggleOverhead,
     toggleCost,
-    toggleReceipt,
     updateEntry,
     saveAll,
     openSubType,
@@ -81,10 +79,8 @@ export const BdrPage = () => {
           yearMonthSlots={yearMonthSlots}
           overheadExpanded={overheadExpanded}
           costExpanded={costExpanded}
-          receiptExpanded={receiptExpanded}
           onToggleOverhead={toggleOverhead}
           onToggleCost={toggleCost}
-          onToggleReceipt={toggleReceipt}
           onUpdatePlan={isReadOnly ? undefined : (code, month, amount) => updateEntry(code, month, amount, 'plan')}
           onUpdateFact={isReadOnly ? undefined : (code, month, amount) => updateEntry(code, month, amount, 'fact')}
           onOpenSub={setOpenSubType}

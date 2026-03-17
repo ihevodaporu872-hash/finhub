@@ -11,16 +11,14 @@ interface IProps {
   yearMonthSlots?: YearMonthSlot[];
   overheadExpanded: boolean;
   costExpanded: boolean;
-  receiptExpanded: boolean;
   onToggleOverhead: () => void;
   onToggleCost: () => void;
-  onToggleReceipt: () => void;
   onUpdatePlan?: (rowCode: string, month: number, amount: number) => void;
   onUpdateFact?: (rowCode: string, month: number, amount: number) => void;
   onOpenSub: (subType: BdrSubType) => void;
 }
 
-export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, costExpanded, receiptExpanded, onToggleOverhead, onToggleCost, onToggleReceipt, onUpdatePlan, onUpdateFact, onOpenSub }: IProps) => {
+export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, costExpanded, onToggleOverhead, onToggleCost, onUpdatePlan, onUpdateFact, onOpenSub }: IProps) => {
   const isMultiYear = yearMonthSlots ? yearMonthSlots.length > 12 : false;
 
   const dataSource = useMemo((): BdrTableRow[] => {
@@ -82,18 +80,6 @@ export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, cos
           return <strong>{record.name}</strong>;
         }
 
-        if (record.isReceiptParent) {
-          return (
-            <span
-              className="bdr-clickable-name bdr-semibold-name"
-              onClick={onToggleReceipt}
-            >
-              {receiptExpanded ? <DownOutlined /> : <RightOutlined />}
-              {' '}{record.name}
-            </span>
-          );
-        }
-
         if (record.isCostParent) {
           return (
             <span
@@ -116,10 +102,6 @@ export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, cos
               {' '}{record.name}
             </span>
           );
-        }
-
-        if (record.isReceiptChild) {
-          return <span className="bdr-cost-indent">{record.name}</span>;
         }
 
         if (record.isClickable && record.subType) {
@@ -157,7 +139,7 @@ export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, cos
     const totalCols = buildBdrTotalColumns();
 
     return [nameCol, ...monthCols, ...totalCols];
-  }, [overheadExpanded, costExpanded, receiptExpanded, onToggleOverhead, onToggleCost, onToggleReceipt, onUpdatePlan, onUpdateFact, onOpenSub, isMultiYear, yearMonthSlots]);
+  }, [overheadExpanded, costExpanded, onToggleOverhead, onToggleCost, onUpdatePlan, onUpdateFact, onOpenSub, isMultiYear, yearMonthSlots]);
 
   const rowClassName = (record: BdrTableRow) => {
     const classes: string[] = [];
@@ -166,7 +148,6 @@ export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, cos
     if (record.isCalculated && !record.isHeader) classes.push('bdr-calculated-row');
     if (record.isOverheadItem) classes.push('bdr-overhead-item');
     if (record.isCostChild) classes.push('bdr-cost-child');
-    if (record.isReceiptChild) classes.push('bdr-cost-child');
     return classes.join(' ');
   };
 
