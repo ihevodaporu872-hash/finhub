@@ -37,6 +37,9 @@ function normalizeStr(s: string): string {
 }
 
 const WORK_TYPE_ALIASES: Record<string, string[]> = {
+  earthworks: ['устройство котлована', 'котлован', 'земляные работы'],
+  waterproofing: ['устройство гидроизоляции'],
+  engineering: ['внутренние инж. системы', 'внутренние инж системы', 'вис'],
   guarantee_return: ['возврат гу', 'возврат г.у.', 'возврат г/у', 'возврат гарантийного удержания', 'возврат gu'],
   guarantee_retention: ['гарантийное удержание', 'гарантийное удерж', 'гу'],
   advance_income: ['аванс (приход)', 'аванс приход', 'аванс'],
