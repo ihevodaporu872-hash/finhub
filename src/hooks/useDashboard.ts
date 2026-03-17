@@ -111,7 +111,10 @@ function nullifyTails(points: IMonthDataPoint[]): IMonthDataPoint[] {
   const result: IMonthDataPoint[] = [];
   for (const items of series.values()) {
     const firstIdx = items.findIndex((p) => p.value !== 0);
-    const lastIdx = items.findLastIndex((p) => p.value !== 0);
+    let lastIdx = -1;
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].value !== 0) { lastIdx = i; break; }
+    }
     for (let i = 0; i < items.length; i++) {
       const p = items[i];
       if (firstIdx === -1 || i < firstIdx || i > lastIdx) {

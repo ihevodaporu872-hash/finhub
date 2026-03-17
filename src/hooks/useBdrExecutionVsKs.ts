@@ -76,7 +76,10 @@ export function useBdrExecutionVsKs(yearFrom: number, yearTo: number, projectId:
       const processed: IExecutionVsKsPoint[] = [];
       for (const items of series.values()) {
         const firstIdx = items.findIndex((p) => p.value !== 0);
-        const lastIdx = items.findLastIndex((p) => p.value !== 0);
+        let lastIdx = -1;
+        for (let j = items.length - 1; j >= 0; j--) {
+          if (items[j].value !== 0) { lastIdx = j; break; }
+        }
         for (let i = 0; i < items.length; i++) {
           const p = items[i];
           if (firstIdx === -1 || i < firstIdx || i > lastIdx) {
