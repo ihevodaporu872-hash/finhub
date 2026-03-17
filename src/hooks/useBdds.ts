@@ -78,17 +78,24 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           let children: BddsRow[] | undefined;
 
           if (catChildren.length > 0) {
-            children = catChildren.map((child) => ({
-              categoryId: child.id,
-              name: child.name,
-              rowType: child.row_type,
-              isCalculated: child.is_calculated,
-              months: planMap.get(child.id) || {},
-              total: calculateRowTotal(planMap.get(child.id) || {}),
-              factMonths: factMap.get(child.id) || {},
-              factTotal: calculateRowTotal(factMap.get(child.id) || {}),
-              parentId: child.parent_id,
-            }));
+            children = catChildren.map((child, idx) => {
+              let childPlan = planMap.get(child.id) || {};
+              // Автозаполнение плана первой дочерней строки доходов из bdds_income_entries
+              if (sectionCode === 'operating' && cat.row_type === 'income' && idx === 0) {
+                childPlan = { ...incomeTotals };
+              }
+              return {
+                categoryId: child.id,
+                name: child.name,
+                rowType: child.row_type,
+                isCalculated: child.is_calculated,
+                months: childPlan,
+                total: calculateRowTotal(childPlan),
+                factMonths: factMap.get(child.id) || {},
+                factTotal: calculateRowTotal(factMap.get(child.id) || {}),
+                parentId: child.parent_id,
+              };
+            });
 
             if (cat.calculation_formula === 'sum_children') {
               const sumPlan: MonthValues = {};
