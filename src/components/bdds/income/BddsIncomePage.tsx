@@ -1,10 +1,13 @@
 import { useState, useCallback } from 'react';
-import { Card, Spin, Alert, message, Button } from 'antd';
+import { Card, Spin, Alert, message, Button, Tabs } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useBddsIncome } from '../../../hooks/useBddsIncome';
+import { useBddsIncomeSummary } from '../../../hooks/useBddsIncomeSummary';
 import { BddsIncomeToolbar } from './BddsIncomeToolbar';
 import { BddsIncomeTable } from './BddsIncomeTable';
+import { BddsIncomeSummaryTable } from './BddsIncomeSummaryTable';
+import { YearSelect } from '../../common/YearSelect';
 import type { ExcelImportData } from '../../../types/bddsIncome';
 
 const currentYear = new Date().getFullYear();
@@ -13,6 +16,7 @@ export const BddsIncomePage = () => {
   const navigate = useNavigate();
   const [yearFrom, setYearFrom] = useState(currentYear);
   const [yearTo, setYearTo] = useState(currentYear);
+  const [activeTab, setActiveTab] = useState('schedule');
 
   const {
     rows,
@@ -24,6 +28,13 @@ export const BddsIncomePage = () => {
     error,
     importData,
   } = useBddsIncome(yearFrom, yearTo);
+
+  const {
+    summaryRows,
+    monthKeys: summaryMonthKeys,
+    loading: summaryLoading,
+    error: summaryError,
+  } = useBddsIncomeSummary(yearFrom, yearTo);
 
   const handleYearFromChange = useCallback((y: number) => {
     setYearFrom(y);
@@ -58,20 +69,8 @@ export const BddsIncomePage = () => {
     return <Alert type="error" message="Ошибка" description={error} showIcon />;
   }
 
-  return (
-    <Card
-      title={
-        <span>
-          <Button
-            type="text"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/bdds')}
-            className="mr-8"
-          />
-          Плановый график выполнения и финансирования проектов
-        </span>
-      }
-    >
+  const scheduleContent = (
+    <>
       <BddsIncomeToolbar
         projects={projects}
         selectedProjectId={selectedProjectId}
@@ -89,6 +88,51 @@ export const BddsIncomePage = () => {
       ) : (
         <BddsIncomeTable rows={rows} monthKeys={monthKeys} />
       )}
+    </>
+  );
+
+  const summaryContent = (
+    <>
+      <div className="bdds-income-toolbar">
+        <span>Год с</span>
+        <YearSelect value={yearFrom} onChange={handleYearFromChange} />
+        <span>Год по</span>
+        <YearSelect value={yearTo} onChange={handleYearToChange} />
+      </div>
+      {summaryError ? (
+        <Alert type="error" message="Ошибка" description={summaryError} showIcon />
+      ) : summaryLoading ? (
+        <div className="page-center">
+          <Spin size="large" />
+        </div>
+      ) : (
+        <BddsIncomeSummaryTable rows={summaryRows} monthKeys={summaryMonthKeys} />
+      )}
+    </>
+  );
+
+  return (
+    <Card
+      title={
+        <span>
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/bdds')}
+            className="mr-8"
+          />
+          Плановый график выполнения и финансирования проектов
+        </span>
+      }
+    >
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: 'schedule', label: 'Плановый график', children: scheduleContent },
+          { key: 'summary', label: 'Сводные данные', children: summaryContent },
+        ]}
+      />
     </Card>
   );
 };

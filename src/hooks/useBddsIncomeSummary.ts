@@ -60,12 +60,12 @@ export function useBddsIncomeSummary(yearFrom: number, yearTo: number): IUseBdds
     const result: SummaryTableRow[] = [];
     const FINANCE_CODES = ['advance_income', 'advance_offset', 'guarantee_retention', 'guarantee_return'];
 
-    // Собираем project_id из записей, чтобы показать даже неактивные проекты с данными
-    const projectIds = new Set(filteredEntries.map((e) => e.project_id));
+    // Только проекты из перечня проектов
+    const activeProjectIds = new Set(projects.map((p) => p.id));
     const projectMap = new Map(projects.map((p) => [p.id, p.name]));
 
-    for (const projectId of projectIds) {
-      const projectName = projectMap.get(projectId) || 'Неизвестный проект';
+    for (const projectId of activeProjectIds) {
+      const projectName = projectMap.get(projectId) || '';
       const projectEntries = filteredEntries.filter((e) => e.project_id === projectId);
 
       // Всего СМР по проекту — сумма всех SMR-кодов
