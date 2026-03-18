@@ -140,6 +140,66 @@ export async function getIncomeTotalsByMonth(year: number, projectId?: string): 
   return totals;
 }
 
+export async function getIncomeTotalsByMonthByProject(
+  year: number
+): Promise<Array<{ project_id: string; month: number; amount: number }>> {
+  const prevDec = `${year - 1}-12`;
+  const { data, error } = await supabase
+    .from('bdds_income_entries')
+    .select('project_id, work_type_code, month_key, amount')
+    .or(`month_key.like.${year}-%,month_key.eq.${prevDec}`)
+    .limit(10000);
+
+  if (error) throw error;
+
+  const SMR_CODES = [
+    'prep_works', 'dewatering', 'earthworks', 'waterproofing',
+    'monolith', 'masonry', 'facade', 'roofing', 'interior',
+    'elevators', 'engineering', 'landscaping', 'external_networks',
+  ];
+
+  // Группируем по (project_id, work_type_code, month_key)
+  const byProjCodeMonth = new Map<string, number>();
+  for (const e of data) {
+    const key = `${e.project_id}|${e.work_type_code}|${e.month_key}`;
+    byProjCodeMonth.set(key, (byProjCodeMonth.get(key) || 0) + Number(e.amount));
+  }
+
+  const getVal = (pid: string, code: string, mk: string) =>
+    byProjCodeMonth.get(`${pid}|${code}|${mk}`) || 0;
+  const getSmrSum = (pid: string, mk: string) =>
+    SMR_CODES.reduce((s, c) => s + getVal(pid, c, mk), 0);
+
+  const getPrevMk = (month: number): string => {
+    if (month === 1) return prevDec;
+    return `${year}-${String(month - 1).padStart(2, '0')}`;
+  };
+
+  // Собираем уникальные project_id
+  const projectIds = new Set<string>();
+  for (const e of data) {
+    if (e.project_id) projectIds.add(e.project_id);
+  }
+
+  const result: Array<{ project_id: string; month: number; amount: number }> = [];
+  for (const pid of projectIds) {
+    for (let m = 1; m <= 12; m++) {
+      const mk = `${year}-${String(m).padStart(2, '0')}`;
+      const prevMk = getPrevMk(m);
+      const amount =
+        getSmrSum(pid, prevMk)
+        + getVal(pid, 'advance_income', mk)
+        - getVal(pid, 'advance_offset', prevMk)
+        - getVal(pid, 'guarantee_retention', prevMk)
+        + getVal(pid, 'guarantee_return', mk);
+      if (amount !== 0) {
+        result.push({ project_id: pid, month: m, amount });
+      }
+    }
+  }
+  return result;
+}
+
 export async function deleteProjectEntries(projectId: string): Promise<void> {
   const { error: e1 } = await supabase
     .from('bdds_income_entries')

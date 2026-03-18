@@ -80,39 +80,3 @@ export async function upsertBatch(
 
   if (error) throw error;
 }
-
-export interface IFactIncomeByProject {
-  project_id: string;
-  month: number;
-  amount: number;
-}
-
-export async function getFactIncomeByProject(
-  year: number,
-  incomeCategoryIds: string[]
-): Promise<IFactIncomeByProject[]> {
-  if (incomeCategoryIds.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from('bdds_entries')
-    .select('project_id, month, amount')
-    .eq('year', year)
-    .eq('entry_type', 'fact')
-    .in('category_id', incomeCategoryIds);
-
-  if (error) throw error;
-
-  const grouped = new Map<string, number>();
-  for (const row of data) {
-    if (!row.project_id) continue;
-    const key = `${row.project_id}|${row.month}`;
-    grouped.set(key, (grouped.get(key) || 0) + Number(row.amount));
-  }
-
-  const result: IFactIncomeByProject[] = [];
-  for (const [key, amount] of grouped) {
-    const [project_id, month] = key.split('|');
-    result.push({ project_id, month: Number(month), amount });
-  }
-  return result;
-}

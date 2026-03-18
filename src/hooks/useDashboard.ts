@@ -35,7 +35,7 @@ interface IYearBddsData {
   planMap: Map<string, MonthValues>;
   factMap: Map<string, MonthValues>;
   incomeTotals: MonthValues;
-  factIncomeByProject: bddsService.IFactIncomeByProject[];
+  incomeByProject: Array<{ project_id: string; month: number; amount: number }>;
 }
 
 type EntryMap = Map<string, MonthValues>;
@@ -124,11 +124,6 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
       for (let y = yearFrom; y <= yearTo; y++) years.push(y);
       const pid = projectId || undefined;
 
-      const categories = await bddsService.getCategories();
-      const incomeCatIds = categories
-        .filter((c) => c.section_code === 'operating' && c.row_type === 'income' && !c.is_calculated)
-        .map((c) => c.id);
-
       const [bdrResults, bddsResults, allProjects] = await Promise.all([
         Promise.all(years.map(async (year): Promise<IYearBdrData> => {
           const [planEntries, factEntries, smr, mat, lab, sub, des, ren, ovl, act] = await Promise.all([
@@ -156,18 +151,19 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
           };
         })),
         Promise.all(years.map(async (year): Promise<IYearBddsData> => {
-          const [planEntries, factEntries, incomeTotals, factIncomeByProject] = await Promise.all([
+          const [categories, planEntries, factEntries, incomeTotals, incomeByProject] = await Promise.all([
+            bddsService.getCategories(),
             bddsService.getEntries(year, 'plan', pid),
             bddsService.getEntries(year, 'fact', pid),
             bddsIncomeService.getIncomeTotalsByMonth(year, pid),
-            bddsService.getFactIncomeByProject(year, incomeCatIds),
+            bddsIncomeService.getIncomeTotalsByMonthByProject(year),
           ]);
           return {
             year, categories,
             planMap: buildEntryMap(planEntries, 'category_id'),
             factMap: buildEntryMap(factEntries, 'category_id'),
             incomeTotals,
-            factIncomeByProject,
+            incomeByProject,
           };
         })),
         projectsService.getProjects(),
@@ -273,13 +269,13 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
       projectNameMap.set(p.id, p.code || p.name);
     }
 
-    // Группируем факт поступлений по проекту: { year -> { projectId -> { month -> amount } } }
-    const factByProjectMap = new Map<string, Map<number, number>>();
+    // Группируем поступления по проекту: { "year|projectId" -> Map<month, amount> }
+    const incByProjectMap = new Map<string, Map<number, number>>();
     for (const d of bddsYears) {
-      for (const row of d.factIncomeByProject) {
+      for (const row of d.incomeByProject) {
         const key = `${d.year}|${row.project_id}`;
-        if (!factByProjectMap.has(key)) factByProjectMap.set(key, new Map());
-        const m = factByProjectMap.get(key)!;
+        if (!incByProjectMap.has(key)) incByProjectMap.set(key, new Map());
+        const m = incByProjectMap.get(key)!;
         m.set(row.month, (m.get(row.month) || 0) + row.amount);
       }
     }
@@ -319,8 +315,8 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         // План для линии комбо-графика
         planIncomeLine.push({ month: label, value: planInc, type: 'План' });
 
-        // Факт по проектам для стековых столбцов
-        for (const [key, monthMap] of factByProjectMap) {
+        // Поступления по проектам для стековых столбцов
+        for (const [key, monthMap] of incByProjectMap) {
           const [yr, pid] = key.split('|');
           if (Number(yr) !== d.year) continue;
           const val = monthMap.get(m.key) || 0;
