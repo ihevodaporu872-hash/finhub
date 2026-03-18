@@ -30,6 +30,16 @@ export function useBddsIncomeSummary(yearFrom: number, yearTo: number): IUseBdds
 
       setProjects(projectsData);
       setEntries(entriesData);
+
+      // Диагностика: какие проекты есть в записях
+      const projectIdsInEntries = new Set(entriesData.map((e) => e.project_id));
+      const projectNames = projectsData
+        .filter((p) => projectIdsInEntries.has(p.id))
+        .map((p) => p.name);
+      console.log('[Сводные данные] Всего записей:', entriesData.length);
+      console.log('[Сводные данные] Проекты в записях:', projectNames);
+      console.log('[Сводные данные] Все проекты:', projectsData.map((p) => p.name));
+      console.log('[Сводные данные] Уникальные project_id в записях:', [...projectIdsInEntries]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
     } finally {
