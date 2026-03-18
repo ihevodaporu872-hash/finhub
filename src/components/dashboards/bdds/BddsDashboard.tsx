@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { Empty, Spin } from 'antd';
 import { BddsKpiCards } from './BddsKpiCards';
 import { BddsPlanFactChart } from './BddsPlanFactChart';
+import { BddsIncomeComboChart } from './BddsIncomeComboChart';
 import { BddsNcfChart } from './BddsNcfChart';
 import type { IBddsDashboardData } from '../../../types/dashboard';
 
@@ -18,6 +19,7 @@ export const BddsDashboard: FC<IProps> = ({ data, loading }) => {
     <div>
       <BddsKpiCards data={data} />
       <BddsPlanFactChart data={data} />
+      <BddsIncomeComboChart data={data} />
       <BddsNcfChart data={data} />
     </div>
   );

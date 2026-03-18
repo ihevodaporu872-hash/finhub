@@ -45,8 +45,16 @@ export interface IExecutionVsKsPoint {
   type: 'Выполнение' | 'Актирование (КС-2)';
 }
 
+export interface IIncomeByProjectPoint {
+  month: string;
+  value: number;
+  project: string;
+}
+
 export interface IBddsDashboardData {
   planFactIncome: IMonthDataPoint[];
+  incomeByProject: IIncomeByProjectPoint[];
+  planIncomeLine: IMonthDataPoint[];
   ncfBySection: IMonthDataPoint[];
   kpis: {
     ncfOperating: number;

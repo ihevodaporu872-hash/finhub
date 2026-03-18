@@ -4,10 +4,12 @@ import * as bdrSubService from '../services/bdrSubService';
 import * as actualExecutionService from '../services/actualExecutionService';
 import * as bddsService from '../services/bddsService';
 import * as bddsIncomeService from '../services/bddsIncomeService';
+import * as projectsService from '../services/projectsService';
 import { MONTHS, SECTION_NAMES, SECTION_ORDER } from '../utils/constants';
 import { OVERHEAD_CODES } from '../utils/bdrConstants';
 import { calculateNetCashFlow } from '../utils/calculations';
-import type { IBdrDashboardData, IBddsDashboardData, IMonthDataPoint, ICostItem, IWaterfallItem } from '../types/dashboard';
+import type { IBdrDashboardData, IBddsDashboardData, IMonthDataPoint, IIncomeByProjectPoint, ICostItem, IWaterfallItem } from '../types/dashboard';
+import type { Project } from '../types/projects';
 import type { MonthValues } from '../types/bdr';
 import type { BddsCategory, BddsRow, SectionCode } from '../types/bdds';
 
@@ -33,6 +35,7 @@ interface IYearBddsData {
   planMap: Map<string, MonthValues>;
   factMap: Map<string, MonthValues>;
   incomeTotals: MonthValues;
+  factIncomeByProject: bddsService.IFactIncomeByProject[];
 }
 
 type EntryMap = Map<string, MonthValues>;
@@ -109,6 +112,7 @@ function monthLabel(month: number, year: number, multiYear: boolean): string {
 export function useDashboard(yearFrom: number, yearTo: number, projectId: string | null = null): IUseDashboardResult {
   const [bdrYears, setBdrYears] = useState<IYearBdrData[]>([]);
   const [bddsYears, setBddsYears] = useState<IYearBddsData[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,7 +124,12 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
       for (let y = yearFrom; y <= yearTo; y++) years.push(y);
       const pid = projectId || undefined;
 
-      const [bdrResults, bddsResults] = await Promise.all([
+      const categories = await bddsService.getCategories();
+      const incomeCatIds = categories
+        .filter((c) => c.section_code === 'operating' && c.row_type === 'income' && !c.is_calculated)
+        .map((c) => c.id);
+
+      const [bdrResults, bddsResults, allProjects] = await Promise.all([
         Promise.all(years.map(async (year): Promise<IYearBdrData> => {
           const [planEntries, factEntries, smr, mat, lab, sub, des, ren, ovl, act] = await Promise.all([
             bdrService.getEntries(year, 'plan', pid),
@@ -147,23 +156,26 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
           };
         })),
         Promise.all(years.map(async (year): Promise<IYearBddsData> => {
-          const [categories, planEntries, factEntries, incomeTotals] = await Promise.all([
-            bddsService.getCategories(),
+          const [planEntries, factEntries, incomeTotals, factIncomeByProject] = await Promise.all([
             bddsService.getEntries(year, 'plan', pid),
             bddsService.getEntries(year, 'fact', pid),
             bddsIncomeService.getIncomeTotalsByMonth(year, pid),
+            bddsService.getFactIncomeByProject(year, incomeCatIds),
           ]);
           return {
             year, categories,
             planMap: buildEntryMap(planEntries, 'category_id'),
             factMap: buildEntryMap(factEntries, 'category_id'),
             incomeTotals,
+            factIncomeByProject,
           };
         })),
+        projectsService.getProjects(),
       ]);
 
       setBdrYears(bdrResults);
       setBddsYears(bddsResults);
+      setProjects(allProjects);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
     } finally {
@@ -252,7 +264,25 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
     let ncfOp = 0, ncfInv = 0, ncfFin = 0;
     let planIncTotal = 0, factIncTotal = 0;
     const planFactIncome: IMonthDataPoint[] = [];
+    const incomeByProject: IIncomeByProjectPoint[] = [];
+    const planIncomeLine: IMonthDataPoint[] = [];
     const ncfBySection: IMonthDataPoint[] = [];
+
+    const projectNameMap = new Map<string, string>();
+    for (const p of projects) {
+      projectNameMap.set(p.id, p.code || p.name);
+    }
+
+    // Группируем факт поступлений по проекту: { year -> { projectId -> { month -> amount } } }
+    const factByProjectMap = new Map<string, Map<number, number>>();
+    for (const d of bddsYears) {
+      for (const row of d.factIncomeByProject) {
+        const key = `${d.year}|${row.project_id}`;
+        if (!factByProjectMap.has(key)) factByProjectMap.set(key, new Map());
+        const m = factByProjectMap.get(key)!;
+        m.set(row.month, (m.get(row.month) || 0) + row.amount);
+      }
+    }
 
     for (const d of bddsYears) {
       const cats = d.categories;
@@ -286,6 +316,22 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         planFactIncome.push({ month: label, value: planInc, type: 'План' });
         planFactIncome.push({ month: label, value: factInc, type: 'Факт' });
 
+        // План для линии комбо-графика
+        planIncomeLine.push({ month: label, value: planInc, type: 'План' });
+
+        // Факт по проектам для стековых столбцов
+        for (const [key, monthMap] of factByProjectMap) {
+          const [yr, pid] = key.split('|');
+          if (Number(yr) !== d.year) continue;
+          const val = monthMap.get(m.key) || 0;
+          if (val === 0) continue;
+          incomeByProject.push({
+            month: label,
+            value: val,
+            project: projectNameMap.get(pid) || pid.slice(0, 8),
+          });
+        }
+
         // ЧДП по секциям
         for (const sc of SECTION_ORDER) {
           const ncfVal = buildNcfForSection(sc as SectionCode, m.key, true);
@@ -299,14 +345,14 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
     }
 
     return {
-      planFactIncome, ncfBySection,
+      planFactIncome, incomeByProject, planIncomeLine, ncfBySection,
       kpis: {
         ncfOperating: ncfOp, ncfInvesting: ncfInv, ncfFinancing: ncfFin,
         ncfTotal: ncfOp + ncfInv + ncfFin,
         planIncomeTotal: planIncTotal, factIncomeTotal: factIncTotal,
       },
     };
-  }, [bddsYears, loading, multiYear]);
+  }, [bddsYears, projects, loading, multiYear]);
 
   return { bdrData, bddsData, loading, error };
 }
