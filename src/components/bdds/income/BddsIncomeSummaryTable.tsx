@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
-import { Table, Typography } from 'antd';
+import { useMemo, useCallback } from 'react';
+import { Table, Typography, Button } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import * as XLSX from 'xlsx';
 import type { SummaryTableRow } from '../../../types/bddsIncome';
 import { formatAmount } from '../../../utils/formatters';
 
@@ -118,10 +120,46 @@ export const BddsIncomeSummaryTable = ({ rows, monthKeys }: IProps) => {
 
   const columns = useMemo(() => buildColumns(monthKeys), [monthKeys]);
 
+  const exportToExcel = useCallback(() => {
+    const wb = XLSX.utils.book_new();
+    const headers = ['Наименование проекта', ...monthKeys.map(formatMonthLabel), 'Итого'];
+
+    const toSheet = (data: SummaryTableRow[]) => {
+      const sheetData = [headers];
+      for (const row of data) {
+        const rowTotal = monthKeys.reduce((s, mk) => {
+          const v = row[mk];
+          return s + (typeof v === 'number' ? v : 0);
+        }, 0);
+        sheetData.push([
+          row.projectName,
+          ...monthKeys.map((mk) => {
+            const v = row[mk];
+            return typeof v === 'number' ? v : '';
+          }),
+          rowTotal || '',
+        ] as string[]);
+      }
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      // Ширина колонок
+      ws['!cols'] = [{ wch: 30 }, ...monthKeys.map(() => ({ wch: 15 })), { wch: 18 }];
+      return ws;
+    };
+
+    XLSX.utils.book_append_sheet(wb, toSheet(smrWithTotal), 'Всего СМР');
+    XLSX.utils.book_append_sheet(wb, toSheet(incomeWithTotal), 'Поступление за СМР');
+    XLSX.writeFile(wb, 'Сводные_данные.xlsx');
+  }, [smrWithTotal, incomeWithTotal, monthKeys]);
+
   if (rows.length === 0) return null;
 
   return (
     <>
+      <div style={{ marginBottom: 16 }}>
+        <Button icon={<DownloadOutlined />} onClick={exportToExcel}>
+          Экспорт в Excel
+        </Button>
+      </div>
       <Typography.Title level={5} style={{ marginTop: 0 }}>Всего СМР по проектам</Typography.Title>
       <Table
         dataSource={smrWithTotal}
