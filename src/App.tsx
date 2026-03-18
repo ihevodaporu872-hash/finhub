@@ -9,6 +9,7 @@ import { AdminUsersPageWrapper } from './pages/AdminUsersPageWrapper';
 import { AdminProjectsPageWrapper } from './pages/AdminProjectsPageWrapper';
 import { BddsIncomePageWrapper } from './pages/BddsIncomePageWrapper';
 import { GuaranteePageWrapper } from './pages/GuaranteePageWrapper';
+import { BddsIncomeSummaryPageWrapper } from './pages/BddsIncomeSummaryPageWrapper';
 
 export const App = () => {
   return (
@@ -18,6 +19,7 @@ export const App = () => {
           <Route path="/actual-execution" element={<ActualExecutionPageWrapper />} />
           <Route path="/bdds" element={<BddsPageWrapper />} />
           <Route path="/bdds/income" element={<BddsIncomePageWrapper />} />
+          <Route path="/bdds/income/summary" element={<BddsIncomeSummaryPageWrapper />} />
           <Route path="/guarantee" element={<GuaranteePageWrapper />} />
           <Route path="/bdr" element={<BdrPageWrapper />} />
           <Route path="/bbl" element={<BblPageWrapper />} />
