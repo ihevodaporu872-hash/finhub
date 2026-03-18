@@ -137,11 +137,13 @@ export function useBddsIncome(yearFrom: number, yearTo: number): IUseBddsIncomeR
 
   const summaryRows = useMemo((): SummaryTableRow[] => {
     const result: SummaryTableRow[] = [];
+    const FINANCE_CODES = ['advance_income', 'advance_offset', 'guarantee_retention', 'guarantee_return'];
 
     for (const project of projects) {
       const projectEntries = allFilteredEntries.filter((e) => e.project_id === project.id);
+      if (projectEntries.length === 0) continue;
 
-      // Всего СМР по проекту
+      // Всего СМР по проекту — сумма всех SMR-кодов
       const smrRow: SummaryTableRow = {
         key: `${project.id}_total_smr`,
         projectName: project.name,
@@ -149,11 +151,18 @@ export function useBddsIncome(yearFrom: number, yearTo: number): IUseBddsIncomeR
         rowLabel: 'Всего СМР по проекту',
         rowType: 'total_smr',
       };
-      for (const e of projectEntries.filter((e) => e.work_type_code === 'total_smr')) {
-        smrRow[e.month_key] = Number(e.amount);
+      for (const mk of allMonthKeys) {
+        const sum = SMR_CODES.reduce((acc, code) => {
+          const entry = projectEntries.find(
+            (e) => e.work_type_code === code && e.month_key === mk
+          );
+          return acc + (entry ? Number(entry.amount) : 0);
+        }, 0);
+        if (sum !== 0) smrRow[mk] = sum;
       }
 
       // Итого поступление за СМР по проекту
+      // = СМР + аванс(приход) + зачёт аванса + гарантийное удержание + возврат ГУ
       const incomeRow: SummaryTableRow = {
         key: `${project.id}_total_income`,
         projectName: project.name,
@@ -161,14 +170,31 @@ export function useBddsIncome(yearFrom: number, yearTo: number): IUseBddsIncomeR
         rowLabel: 'Итого поступление за СМР по проекту',
         rowType: 'total_income',
       };
-      for (const e of projectEntries.filter((e) => e.work_type_code === 'total_income')) {
-        incomeRow[e.month_key] = Number(e.amount);
+
+      // Сначала проверим, есть ли сохранённые total_income
+      const storedIncome = projectEntries.filter((e) => e.work_type_code === 'total_income');
+      if (storedIncome.length > 0) {
+        for (const e of storedIncome) {
+          incomeRow[e.month_key] = Number(e.amount);
+        }
+      } else {
+        // Рассчитываем: SMR + finance codes
+        for (const mk of allMonthKeys) {
+          const smrVal = typeof smrRow[mk] === 'number' ? (smrRow[mk] as number) : 0;
+          const financeSum = FINANCE_CODES.reduce((acc, code) => {
+            const entry = projectEntries.find(
+              (e) => e.work_type_code === code && e.month_key === mk
+            );
+            return acc + (entry ? Number(entry.amount) : 0);
+          }, 0);
+          const total = smrVal + financeSum;
+          if (total !== 0) incomeRow[mk] = total;
+        }
       }
 
-      // Добавляем только если есть данные хотя бы в одной строке
+      // Добавляем только если есть данные
       const hasData = allMonthKeys.some(
-        (mk) => (typeof smrRow[mk] === 'number' && smrRow[mk] !== 0) ||
-                 (typeof incomeRow[mk] === 'number' && incomeRow[mk] !== 0)
+        (mk) => (typeof smrRow[mk] === 'number') || (typeof incomeRow[mk] === 'number')
       );
       if (hasData) {
         result.push(smrRow, incomeRow);
