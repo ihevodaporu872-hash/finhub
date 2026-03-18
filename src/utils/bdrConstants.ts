@@ -2,14 +2,14 @@ import type { BdrRowDef, BdrSubType } from '../types/bdr';
 
 export const BDR_ROWS: BdrRowDef[] = [
   { code: 'bdr_header', name: 'Статья БДР', isHeader: true },
-  { code: 'revenue', name: 'Выручка', isSemiBold: true, isCalculated: true },
+  { code: 'revenue', name: 'Выручка', isSemiBold: true, isCalculated: true, isKeyMetric: true },
   { code: 'revenue_smr', name: 'Выручка от СМР всего (КС-2 с Заказчиком)', isCalculated: true },
   { code: 'execution_total', name: 'Выполнение всего (КС-2 внутренняя)', isCalculated: true },
   { code: 'contract_not_accepted', name: 'Всего работы по контракту выполненные, но не принятые заказчиком', isCalculated: true },
   { code: 'readiness_percent', name: 'Процент готовности с начала строительства', isPercent: true, isCalculated: true },
   { code: 'nzp_to_revenue', name: 'Отношение НЗП к Выручке', isPercent: true, isCalculated: true, noPlan: true },
 
-  { code: 'cost_total', name: 'Себестоимость в т.ч.', isSemiBold: true, isCalculated: true, isCostParent: true },
+  { code: 'cost_total', name: 'Себестоимость в т.ч.', isSemiBold: true, isCalculated: true, isCostParent: true, isKeyMetric: true },
   { code: 'cost_materials', name: 'Материальные расходы', isClickable: true, subType: 'materials', isCostChild: true },
   { code: 'cost_labor', name: 'ФОТ основных рабочих', isClickable: true, subType: 'labor', isCostChild: true },
   { code: 'cost_subcontract', name: 'Субподряд', isClickable: true, subType: 'subcontract', isCostChild: true },
@@ -19,16 +19,16 @@ export const BDR_ROWS: BdrRowDef[] = [
 
   { code: 'overhead_ratio', name: 'Коэф.накладных расходов', isPercent: true, isCalculated: true },
   { code: 'labor_cost_ratio', name: 'Доля ФОТ в себестоимости (Labor Cost Ratio)', isPercent: true, isCalculated: true },
-  { code: 'marginal_profit', name: 'Маржинальная прибыль', isCalculated: true },
-  { code: 'gross_margin', name: 'Маржинальная (Валовая) рентабельность (Gross Margin)', isPercent: true, isCalculated: true },
+  { code: 'marginal_profit', name: 'Маржинальная прибыль', isCalculated: true, isKeyMetric: true },
+  { code: 'gross_margin', name: 'Маржинальная (Валовая) рентабельность (Gross Margin)', isPercent: true, isCalculated: true, isKeyMetric: true },
   { code: 'fixed_expenses', name: 'Постоянные коммерческие и управленческие расходы (в т.ч. Амортизация) (ОФЗ)', isPlanCalculated: true, isClickable: true, subType: 'fixed_expenses' },
-  { code: 'operating_profit', name: 'Операционная прибыль', isCalculated: true },
+  { code: 'operating_profit', name: 'Операционная прибыль', isCalculated: true, isKeyMetric: true },
   { code: 'operating_profit_pct', name: 'В % к общей прибыли', isPercent: true, isCalculated: true },
   { code: 'other_income_expense', name: 'Прочие доходы (расходы)' },
   { code: 'profit_before_tax', name: 'Прибыль (Убыток) до налогообложение', isCalculated: true },
   { code: 'income_tax', name: 'Налог на прибыль' },
-  { code: 'net_profit', name: 'Чистая прибыль', isCalculated: true },
-  { code: 'net_profit_margin', name: 'Рентабельность по чистой прибыли (Net Profit Margin)', isPercent: true, isCalculated: true },
+  { code: 'net_profit', name: 'Чистая прибыль', isCalculated: true, isKeyMetric: true },
+  { code: 'net_profit_margin', name: 'Рентабельность по чистой прибыли (Net Profit Margin)', isPercent: true, isCalculated: true, isKeyMetric: true },
   { code: 'dividends', name: 'Дивиденды и прочее распределение прибыли' },
 ];
 

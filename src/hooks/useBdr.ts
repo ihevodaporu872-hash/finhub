@@ -259,6 +259,7 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
           noPlan: def.noPlan,
           isPercent: def.isPercent,
           subType: def.subType,
+          isKeyMetric: def.isKeyMetric,
         };
 
         if (def.isHeader) return row;

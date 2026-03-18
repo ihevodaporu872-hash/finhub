@@ -119,6 +119,16 @@ body {
   font-weight: 600;
 }
 
+/* БДР — ключевые метрики для бизнес-решений */
+.bdr-key-metric td {
+  border-left: 3px solid #1677ff;
+  font-weight: 700;
+  background-color: #f0f5ff !important;
+}
+.bdr-key-metric td:first-child {
+  padding-left: 13px;
+}
+
 /* БДР — строки накладных расходов (под-элементы) */
 .bdr-overhead-item td {
   font-size: 12px;

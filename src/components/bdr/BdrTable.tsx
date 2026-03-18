@@ -146,6 +146,7 @@ export const BdrTable = ({ rows, yearRows, yearMonthSlots, overheadExpanded, cos
     if (record.isHeader) classes.push('bdr-header-row');
     if (record.isSemiBold) classes.push('bdr-semibold-row');
     if (record.isCalculated && !record.isHeader) classes.push('bdr-calculated-row');
+    if (record.isKeyMetric) classes.push('bdr-key-metric');
     if (record.isOverheadItem) classes.push('bdr-overhead-item');
     if (record.isCostChild) classes.push('bdr-cost-child');
     return classes.join(' ');

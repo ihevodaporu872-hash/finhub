@@ -68,6 +68,7 @@ export interface BdrRowDef {
   isCostChild?: boolean;
   isPlanCalculated?: boolean;
   noPlan?: boolean;
+  isKeyMetric?: boolean;
 }
 
 export type MonthValues = Record<number, number>;
@@ -88,6 +89,7 @@ export interface BdrTableRow {
   isCostChild?: boolean;
   isPlanCalculated?: boolean;
   noPlan?: boolean;
+  isKeyMetric?: boolean;
   plan_total?: number;
   fact_total?: number;
   [key: string]: unknown;
