@@ -187,6 +187,11 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
 
   const handleFile = async (file: File) => {
     try {
+      if (isOverheadLabor && !projectId) {
+        message.warning('Выберите проект перед импортом');
+        return;
+      }
+
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];

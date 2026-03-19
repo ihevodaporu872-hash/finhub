@@ -1,4 +1,4 @@
-import { Button, Select, Space } from 'antd';
+import { Button, Select, Space, message } from 'antd';
 import { PlusOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import type { BdrSubEntry, BdrSubType, BdrSubEntryFormData } from '../../../types/bdr';
@@ -48,6 +48,8 @@ export const BdrSubToolbar = ({
           '№п/п': i + 1,
           'Отдел/Сотрудник': e.company,
           'Сумма': e.amount,
+          'Сумма НДС': e.amount_nds || 0,
+          'Сумма без НДС': e.amount_without_nds || 0,
         }))
       : NDS_SUB_TYPES.includes(subType)
       ? entries.map((e, i) => ({
@@ -106,7 +108,17 @@ export const BdrSubToolbar = ({
           </Select.Option>
         ))}
       </Select>
-      <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
+      <Button
+        type="primary"
+        icon={<PlusOutlined />}
+        onClick={() => {
+          if (isOverheadLabor && !selectedProjectId) {
+            message.warning('Выберите проект перед добавлением');
+            return;
+          }
+          onAdd();
+        }}
+      >
         Добавить
       </Button>
       <BdrSubExcelImport
