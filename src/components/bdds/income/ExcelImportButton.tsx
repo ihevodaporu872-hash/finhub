@@ -52,8 +52,8 @@ function parseMonthHeader(header: unknown): string | null {
   const dotMatch = trimmed.match(/^(\d{1,2})\.(\d{4})$/);
   if (dotMatch) return `${dotMatch[2]}-${dotMatch[1].padStart(2, '0')}`;
 
-  // "Янв 2026", "Январь 2026", "Янв. 2026", "янв.2026"
-  const textMatch = trimmed.toLowerCase().match(/^([a-zа-яё]+)\.?\s*(\d{4})$/);
+  // "Янв 2026", "Январь 2026", "Янв. 2026", "янв.2026", "Jul-2026"
+  const textMatch = trimmed.toLowerCase().match(/^([a-zа-яё]+)\.?[\s-]*(\d{4})$/);
   if (textMatch) {
     const monthNum = MONTH_NAMES[textMatch[1]];
     if (monthNum) return `${textMatch[2]}-${monthNum}`;
@@ -74,8 +74,8 @@ function parseMonthHeader(header: unknown): string | null {
     if (m >= 1 && m <= 12) return `${year}-${String(m).padStart(2, '0')}`;
   }
 
-  // "авг.22", "сен.22", "янв 23", "мар.25" — сокращённый месяц + 2-значный год
-  const shortYearMatch = trimmed.toLowerCase().match(/^([a-zа-яё]+)\.?\s*(\d{2})$/);
+  // "авг.22", "сен.22", "янв 23", "мар.25", "Jul-22" — сокращённый месяц + 2-значный год
+  const shortYearMatch = trimmed.toLowerCase().match(/^([a-zа-яё]+)\.?[\s-]*(\d{2})$/);
   if (shortYearMatch) {
     const monthNum = MONTH_NAMES[shortYearMatch[1]];
     if (monthNum) {
