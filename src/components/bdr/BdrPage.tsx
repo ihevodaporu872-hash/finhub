@@ -4,6 +4,7 @@ import { useBdr } from '../../hooks/useBdr';
 import { BdrToolbar } from './BdrToolbar';
 import { BdrTable } from './BdrTable';
 import { BdrSubModal } from './sub/BdrSubModal';
+import type { Project } from '../../types/projects';
 
 const currentYear = new Date().getFullYear();
 
@@ -42,6 +43,20 @@ export const BdrPage = () => {
     if (y < yearFrom) setYearFrom(y);
   }, [yearFrom]);
 
+  const handleProjectChange = useCallback((projectId: string | null, project: Project | null) => {
+    setSelectedProjectId(projectId);
+    if (project?.start_date) {
+      setYearFrom(new Date(project.start_date).getFullYear());
+    } else if (!projectId) {
+      setYearFrom(currentYear);
+    }
+    if (project?.gu_return_date) {
+      setYearTo(new Date(project.gu_return_date).getFullYear());
+    } else if (!projectId) {
+      setYearTo(currentYear);
+    }
+  }, []);
+
   const handleSave = async () => {
     try {
       await saveAll();
@@ -71,7 +86,7 @@ export const BdrPage = () => {
           onSave={handleSave}
           saving={saving}
           selectedProjectId={selectedProjectId}
-          onProjectChange={setSelectedProjectId}
+          onProjectChange={handleProjectChange}
         />
         <BdrTable
           rows={rows}
