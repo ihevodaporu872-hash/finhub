@@ -327,13 +327,20 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
         accept=".xlsx,.xls"
         className="hidden-input"
         onChange={(e) => {
+          console.log('[IMPORT] onChange fired, files:', e.target.files?.length);
           const file = e.target.files?.[0];
-          if (file) handleFile(file);
+          if (file) {
+            console.log('[IMPORT] file selected:', file.name, 'projectId:', projectId);
+            handleFile(file);
+          }
         }}
       />
       <Button
         icon={<UploadOutlined />}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => {
+          console.log('[IMPORT] button clicked, inputRef:', !!inputRef.current);
+          inputRef.current?.click();
+        }}
       >
         Импорт Excel
       </Button>
