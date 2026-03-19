@@ -35,8 +35,8 @@ function parseMonthHeader(header: unknown): string | null {
   // Date-объект (cellDates: true)
   if (header instanceof Date) return dateToMonthKey(header);
 
-  // Excel serial date (число)
-  if (typeof header === 'number' && header > 30000 && header < 70000) {
+  // Excel serial date (число от ~1990 до ~2100)
+  if (typeof header === 'number' && header > 25000 && header < 80000) {
     const d = new Date((header - 25569) * 86400000);
     return dateToMonthKey(d);
   }
@@ -60,10 +60,18 @@ function parseMonthHeader(header: unknown): string | null {
   }
 
   // "01.01.2026", "1.7.2025" — день.месяц.год (берём только месяц и год)
-  const dmy = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (dmy) {
-    const m = parseInt(dmy[2], 10);
-    if (m >= 1 && m <= 12) return `${dmy[3]}-${String(m).padStart(2, '0')}`;
+  const dmy4 = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (dmy4) {
+    const m = parseInt(dmy4[2], 10);
+    if (m >= 1 && m <= 12) return `${dmy4[3]}-${String(m).padStart(2, '0')}`;
+  }
+
+  // "01.01.26", "1.7.25" — день.месяц.2-значный год
+  const dmy2 = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2})$/);
+  if (dmy2) {
+    const m = parseInt(dmy2[2], 10);
+    const year = 2000 + parseInt(dmy2[3], 10);
+    if (m >= 1 && m <= 12) return `${year}-${String(m).padStart(2, '0')}`;
   }
 
   // "авг.22", "сен.22", "янв 23", "мар.25" — сокращённый месяц + 2-значный год
@@ -139,7 +147,19 @@ export const ExcelImportButton = ({ disabled, onImport }: IProps) => {
         }
 
         if (headerRow === -1 || monthColumns.length === 0) {
-          message.error('Не удалось определить столбцы с месяцами. Используйте формат: "Янв 2026" или "2026-01"');
+          // Диагностика: показать содержимое первых строк
+          for (let r = range.s.r; r <= Math.min(range.s.r + 4, range.e.r); r++) {
+            const cells: string[] = [];
+            for (let c = 0; c <= Math.min(5, range.e.c); c++) {
+              const addr = XLSX.utils.encode_cell({ r, c });
+              const cell = sheet[addr];
+              if (cell) {
+                cells.push(`[${addr}] t=${cell.t} w="${cell.w}" v=${cell.v}`);
+              }
+            }
+            console.log(`[Импорт] Строка ${r}:`, cells.join(' | '));
+          }
+          message.error('Не удалось определить столбцы с месяцами. Откройте консоль (F12) для диагностики');
           return;
         }
 
