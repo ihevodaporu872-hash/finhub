@@ -9,6 +9,7 @@ import { BddsIncomeTable } from './BddsIncomeTable';
 import { BddsIncomeSummaryTable } from './BddsIncomeSummaryTable';
 import { YearSelect } from '../../common/YearSelect';
 import type { ExcelImportData } from '../../../types/bddsIncome';
+import type { Project } from '../../../types/projects';
 
 const currentYear = new Date().getFullYear();
 
@@ -46,6 +47,20 @@ export const BddsIncomePage = () => {
     if (y < yearFrom) setYearFrom(y);
   }, [yearFrom]);
 
+  const handleProjectChange = useCallback((projectId: string | null, project: Project | null) => {
+    setSelectedProjectId(projectId);
+    if (project?.start_date) {
+      setYearFrom(new Date(project.start_date).getFullYear());
+    } else if (!projectId) {
+      setYearFrom(currentYear);
+    }
+    if (project?.gu_return_date) {
+      setYearTo(new Date(project.gu_return_date).getFullYear());
+    } else if (!projectId) {
+      setYearTo(currentYear);
+    }
+  }, [setSelectedProjectId]);
+
   const handleImport = async (data: ExcelImportData[]) => {
     if (!selectedProjectId) {
       message.error('Выберите проект для импорта');
@@ -74,7 +89,7 @@ export const BddsIncomePage = () => {
       <BddsIncomeToolbar
         projects={projects}
         selectedProjectId={selectedProjectId}
-        onProjectChange={setSelectedProjectId}
+        onProjectChange={handleProjectChange}
         yearFrom={yearFrom}
         yearTo={yearTo}
         onYearFromChange={handleYearFromChange}
