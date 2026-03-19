@@ -248,7 +248,8 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
             amount,
           };
           entry.amount_nds = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount_nds));
-          entry.amount_without_nds = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount_without_nds));
+          const parsedWithoutNds = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount_without_nds));
+          entry.amount_without_nds = parsedWithoutNds || amount;
           entries.push(entry);
         } else {
           const company = String(findColumnValue(row, COLUMN_ALIASES.company) ?? '');
@@ -271,7 +272,8 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
 
           if (NDS_SUB_TYPES.includes(subType)) {
             entry.amount_nds = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount_nds));
-            entry.amount_without_nds = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount_without_nds));
+            const parsedWoNds = parseAmount(findColumnValue(row, COLUMN_ALIASES.amount_without_nds));
+            entry.amount_without_nds = parsedWoNds || amount;
           }
 
           entries.push(entry);

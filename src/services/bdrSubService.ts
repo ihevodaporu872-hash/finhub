@@ -82,7 +82,7 @@ export async function getSubTotalsByMonth(
   const useNds = NDS_SUB_TYPES.includes(subType);
   let query = supabase
     .from('bdr_sub_entries')
-    .select(useNds ? 'entry_date, amount_without_nds' : 'entry_date, amount')
+    .select(useNds ? 'entry_date, amount, amount_without_nds' : 'entry_date, amount')
     .eq('sub_type', subType)
     .gte('entry_date', `${year}-01-01`)
     .lte('entry_date', `${year}-12-31`);
@@ -97,7 +97,7 @@ export async function getSubTotalsByMonth(
   const totals: Record<number, number> = {};
   for (const e of data) {
     const month = new Date(e.entry_date).getMonth() + 1;
-    const val = useNds ? (Number(e.amount_without_nds) || 0) : Number(e.amount);
+    const val = useNds ? (Number(e.amount_without_nds) || Number(e.amount) || 0) : Number(e.amount);
     totals[month] = (totals[month] || 0) + val;
   }
   return totals;
@@ -128,7 +128,7 @@ export async function getMultiSubTotalsByMonth(
     if (!result[st]) result[st] = {};
     const month = new Date(e.entry_date).getMonth() + 1;
     const useNds = NDS_SUB_TYPES.includes(st as BdrSubType);
-    const val = useNds ? (Number(e.amount_without_nds) || 0) : Number(e.amount);
+    const val = useNds ? (Number(e.amount_without_nds) || Number(e.amount) || 0) : Number(e.amount);
     result[st][month] = (result[st][month] || 0) + val;
   }
   return result;
