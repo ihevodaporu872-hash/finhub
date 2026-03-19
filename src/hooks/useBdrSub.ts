@@ -20,10 +20,10 @@ interface IUseBdrSubResult {
   reload: () => Promise<void>;
 }
 
-export function useBdrSub(subType: BdrSubType, _year: number): IUseBdrSubResult {
+export function useBdrSub(subType: BdrSubType, _year: number, initialProjectId?: string | null): IUseBdrSubResult {
   const [entries, setEntries] = useState<BdrSubEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId ?? null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(
     (subType === 'overhead_labor' || subType === 'fixed_expenses') ? new Date().getMonth() + 1 : null
   );

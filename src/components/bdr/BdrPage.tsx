@@ -105,6 +105,7 @@ export const BdrPage = () => {
         <BdrSubModal
           subType={openSubType}
           year={yearFrom}
+          initialProjectId={selectedProjectId}
           onClose={handleSubClose}
         />
       )}

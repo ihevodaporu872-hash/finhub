@@ -192,19 +192,19 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
         return;
       }
 
-      console.log('[IMPORT] handleFile started, projectId:', projectId);
+
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = readSheetWithHeaderDetection(sheet);
-      console.log('[IMPORT] rows parsed:', jsonData.length);
+
 
       if (jsonData.length === 0) {
         message.warning('Файл пуст или не содержит данных');
         return;
       }
 
-      console.log('[IMPORT] first row keys:', Object.keys(jsonData[0]));
+
       const entries: BdrSubEntryFormData[] = [];
       const failedRows: IFailedRow[] = [];
 
@@ -290,9 +290,9 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
         return;
       }
 
-      console.log('[IMPORT] entries:', entries.length, 'failed:', failedRows.length);
+
       await onImport(entries);
-      console.log('[IMPORT] onImport completed');
+
 
       if (failedRows.length > 0) {
         notification.warning({
@@ -332,20 +332,13 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
         accept=".xlsx,.xls"
         className="hidden-input"
         onChange={(e) => {
-          console.log('[IMPORT] onChange fired, files:', e.target.files?.length);
           const file = e.target.files?.[0];
-          if (file) {
-            console.log('[IMPORT] file selected:', file.name, 'projectId:', projectId);
-            handleFile(file);
-          }
+          if (file) handleFile(file);
         }}
       />
       <Button
         icon={<UploadOutlined />}
-        onClick={() => {
-          console.log('[IMPORT] button clicked, inputRef:', !!inputRef.current);
-          inputRef.current?.click();
-        }}
+        onClick={() => inputRef.current?.click()}
       >
         Импорт Excel
       </Button>

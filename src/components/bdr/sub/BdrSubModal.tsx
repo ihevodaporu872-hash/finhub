@@ -10,10 +10,11 @@ import { BdrSubEntryForm } from './BdrSubEntryForm';
 interface IProps {
   subType: BdrSubType;
   year: number;
+  initialProjectId?: string | null;
   onClose: () => void;
 }
 
-export const BdrSubModal = ({ subType, year, onClose }: IProps) => {
+export const BdrSubModal = ({ subType, year, initialProjectId, onClose }: IProps) => {
   const {
     entries,
     projects,
@@ -27,7 +28,7 @@ export const BdrSubModal = ({ subType, year, onClose }: IProps) => {
     updateEntry,
     deleteEntry,
     importFromExcel,
-  } = useBdrSub(subType, year);
+  } = useBdrSub(subType, year, initialProjectId);
 
   const [formVisible, setFormVisible] = useState(false);
   const [editingEntry, setEditingEntry] = useState<BdrSubEntry | null>(null);
