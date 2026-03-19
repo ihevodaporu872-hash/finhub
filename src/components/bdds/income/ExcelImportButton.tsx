@@ -59,6 +59,13 @@ function parseMonthHeader(header: unknown): string | null {
     if (monthNum) return `${textMatch[2]}-${monthNum}`;
   }
 
+  // "01.01.2026", "1.7.2025" — день.месяц.год (берём только месяц и год)
+  const dmy = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dmy) {
+    const m = parseInt(dmy[2], 10);
+    if (m >= 1 && m <= 12) return `${dmy[3]}-${String(m).padStart(2, '0')}`;
+  }
+
   // "авг.22", "сен.22", "янв 23", "мар.25" — сокращённый месяц + 2-значный год
   const shortYearMatch = trimmed.toLowerCase().match(/^([a-zа-яё]+)\.?\s*(\d{2})$/);
   if (shortYearMatch) {
