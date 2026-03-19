@@ -317,10 +317,10 @@ export const BdrSubExcelImport = ({ subType, projectId, selectedMonth, year, onI
           ? String((err as Record<string, unknown>).message)
           : JSON.stringify(err);
       message.error(`Ошибка импорта: ${msg}`);
-    }
-
-    if (inputRef.current) {
-      inputRef.current.value = '';
+    } finally {
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
     }
   };
 
