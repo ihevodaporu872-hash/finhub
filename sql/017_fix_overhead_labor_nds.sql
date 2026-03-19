@@ -1,10 +1,8 @@
--- Удаляем записи overhead_labor без привязки к проекту (загружены ошибочно)
+-- Удаляем все записи без привязки к проекту (загружены ошибочно)
 DELETE FROM bdr_sub_entries
-WHERE sub_type = 'overhead_labor'
-  AND project_id IS NULL;
+WHERE project_id IS NULL;
 
--- Заполняем amount_without_nds для оставшихся записей overhead_labor
+-- Заполняем amount_without_nds для записей где оно пустое
 UPDATE bdr_sub_entries
 SET amount_without_nds = amount
-WHERE sub_type = 'overhead_labor'
-  AND amount_without_nds IS NULL;
+WHERE amount_without_nds IS NULL;
