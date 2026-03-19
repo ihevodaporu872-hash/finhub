@@ -60,6 +60,8 @@ const buildColumns = (monthKeys: string[]): ColumnsType<SummaryTableRow> => {
   cols.push({
     title: 'Итого',
     key: 'row_total',
+    fixed: 'right',
+    width: 140,
     align: 'right',
     className: 'bdds-total-cell',
     render: (_: unknown, record: SummaryTableRow) => {

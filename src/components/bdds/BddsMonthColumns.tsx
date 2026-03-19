@@ -130,6 +130,7 @@ export const buildTotalColumns = (): ColumnsType<BddsTableRow> => {
     {
       title: 'Итого',
       key: 'total_group',
+      fixed: 'right',
       className: 'bdds-total-cell',
       children: [
         {
