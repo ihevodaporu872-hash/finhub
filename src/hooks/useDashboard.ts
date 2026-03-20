@@ -310,9 +310,9 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
 
         // План/факт поступлений (operating income)
         const opIncomeCats = cats.filter((c) => c.section_code === 'operating' && c.row_type === 'income' && !c.is_calculated);
-        let planInc = 0, factInc = 0;
+        const planInc = d.incomeTotals[m.key] || 0;
+        let factInc = 0;
         for (const cat of opIncomeCats) {
-          planInc += d.incomeTotals[m.key] || 0;
           factInc += getVal(d.factMap, cat.id, m.key);
         }
         planIncTotal += planInc;
