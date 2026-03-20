@@ -55,15 +55,9 @@ export const BdrMaterialsDeltaChart: FC<IProps> = ({ data }) => {
         data: data.line,
         type: 'line' as const,
         yField: 'value',
-        colorField: 'type',
-        scale: {
-          color: {
-            domain: ['Дельта (накопл.)'],
-            range: ['#ff4d4f'],
-          },
-        },
         style: {
           lineWidth: 2.5,
+          stroke: '#ff4d4f',
         },
         axis: {
           y: {
@@ -72,7 +66,7 @@ export const BdrMaterialsDeltaChart: FC<IProps> = ({ data }) => {
           },
         },
         tooltip: {
-          items: [{ channel: 'y', valueFormatter }],
+          items: [{ channel: 'y', name: 'Дельта (накопл.)', valueFormatter }],
         },
       },
     ],
