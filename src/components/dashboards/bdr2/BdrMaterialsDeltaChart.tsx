@@ -21,6 +21,9 @@ export const BdrMaterialsDeltaChart: FC<IProps> = ({ data }) => {
   const valueFormatter = (v: number) =>
     v.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽';
 
+  // Переименовываем поле для линии, чтобы G2 использовал его как имя в тултипе
+  const lineData = data.line.map((d) => ({ month: d.month, 'Дельта': d.value }));
+
   const config = {
     xField: 'month',
     children: [
@@ -52,9 +55,9 @@ export const BdrMaterialsDeltaChart: FC<IProps> = ({ data }) => {
         },
       },
       {
-        data: data.line,
+        data: lineData,
         type: 'line' as const,
-        yField: 'value',
+        yField: 'Дельта',
         style: {
           lineWidth: 2.5,
           stroke: '#ff4d4f',
@@ -66,7 +69,7 @@ export const BdrMaterialsDeltaChart: FC<IProps> = ({ data }) => {
           },
         },
         tooltip: {
-          items: [{ channel: 'y', name: 'Дельта', valueFormatter }],
+          items: [{ channel: 'y', valueFormatter }],
         },
       },
       {
