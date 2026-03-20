@@ -21,7 +21,7 @@ export const BdrMaterialsDeltaChart: FC<IProps> = ({ data }) => {
   const valueFormatter = (v: number) =>
     v.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽';
 
-  const lineData = data.line.map((d) => ({ month: d.month, value: d.value, series: 'Дельта' }));
+  const lineData = data.line;
 
   const config = {
     xField: 'month',
@@ -57,15 +57,9 @@ export const BdrMaterialsDeltaChart: FC<IProps> = ({ data }) => {
         data: lineData,
         type: 'line' as const,
         yField: 'value',
-        colorField: 'series',
-        scale: {
-          color: {
-            domain: ['Дельта'],
-            range: ['#ff4d4f'],
-          },
-        },
         style: {
           lineWidth: 2.5,
+          stroke: '#ff4d4f',
         },
         axis: {
           y: {
@@ -74,7 +68,13 @@ export const BdrMaterialsDeltaChart: FC<IProps> = ({ data }) => {
           },
         },
         tooltip: {
-          items: [{ channel: 'y', valueFormatter }],
+          items: [
+            (d: Record<string, number>) => ({
+              name: 'Дельта',
+              value: valueFormatter(d.value),
+              color: '#ff4d4f',
+            }),
+          ],
         },
       },
       {
