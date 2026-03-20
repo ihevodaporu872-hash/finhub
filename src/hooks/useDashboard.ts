@@ -37,6 +37,7 @@ interface IYearBddsData {
   factMap: Map<string, MonthValues>;
   incomeTotals: MonthValues;
   incomeByProject: Array<{ project_id: string; month: number; amount: number }>;
+  bddsPlanFromSub: Record<string, Record<number, number>>;
 }
 
 type EntryMap = Map<string, MonthValues>;
@@ -156,12 +157,13 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
           };
         })),
         Promise.all(years.map(async (year): Promise<IYearBddsData> => {
-          const [categories, planEntries, factEntries, incomeTotals, incomeByProject] = await Promise.all([
+          const [categories, planEntries, factEntries, incomeTotals, incomeByProject, bddsPlanFromSub] = await Promise.all([
             bddsService.getCategories(),
             bddsService.getEntries(year, 'plan', pid),
             bddsService.getEntries(year, 'fact', pid),
             bddsIncomeService.getIncomeTotalsByMonth(year, pid),
             bddsIncomeService.getIncomeTotalsByMonthByProject(year),
+            bdrSubService.getSubTotalsForBdds(year, pid),
           ]);
           return {
             year, categories,
@@ -169,6 +171,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
             factMap: buildEntryMap(factEntries, 'category_id'),
             incomeTotals,
             incomeByProject,
+            bddsPlanFromSub,
           };
         })),
         projectsService.getProjects(),
@@ -370,11 +373,17 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
       if (!dd) continue;
 
       const matCat = dd.categories.find((c) => c.name === BDDS_MAT_NAME);
+      // План БДДС для материалов (из bdr_sub_entries, сдвиг +1 мес)
+      const matPlanFromSub = dd.bddsPlanFromSub['materials'] || {};
 
       for (const m of MONTHS) {
         const label = monthLabel(m.key, bd.year, multiYear);
 
-        const bddsFact = matCat ? getVal(dd.factMap, matCat.id, m.key) : 0;
+        let bddsFact = matCat ? getVal(dd.factMap, matCat.id, m.key) : 0;
+        // Тестовая подстановка: если факт БДДС пуст, берём 90% от плана
+        if (!bddsFact && matPlanFromSub[m.key]) {
+          bddsFact = Math.round(matPlanFromSub[m.key] * 0.9);
+        }
         const bdrFact = calcBdr('cost_materials', m.key, 'fact', bd);
 
         columns.push({ month: label, value: bddsFact, type: 'БДДС Оплата' });
