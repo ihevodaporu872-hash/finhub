@@ -51,22 +51,24 @@ export async function importReceipts(
 
   if (rows.length === 0) return;
 
-  const records = rows.map((r) => {
-    const date = r.receipt_date ? new Date(r.receipt_date) : null;
-    const month = date ? date.getMonth() + 1 : 1;
-    return {
-      project_id: projectId,
-      category_id: categoryId,
-      year,
-      month,
-      row_number: r.row_number,
-      receipt_date: r.receipt_date,
-      customer: r.customer,
-      contract: r.contract,
-      project_name: r.project_name,
-      amount: r.amount,
-    };
-  });
+  const records = rows
+    .filter((r) => r.receipt_date)
+    .map((r) => {
+      const date = new Date(r.receipt_date!);
+      const month = date.getMonth() + 1;
+      return {
+        project_id: projectId,
+        category_id: categoryId,
+        year: date.getFullYear(),
+        month,
+        row_number: r.row_number,
+        receipt_date: r.receipt_date,
+        customer: r.customer,
+        contract: r.contract,
+        project_name: r.project_name,
+        amount: r.amount,
+      };
+    });
 
   const { error } = await supabase
     .from('bdds_receipt_details')
