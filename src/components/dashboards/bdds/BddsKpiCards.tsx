@@ -10,7 +10,6 @@ interface IProps {
 
 export const BddsKpiCards: FC<IProps> = ({ data }) => {
   const { kpis } = data;
-  const smrBalance = kpis.planIncomeTotal - kpis.factIncomeTotal;
 
   return (
     <Row gutter={[16, 16]} className="dashboard-kpi-row">
@@ -51,36 +50,6 @@ export const BddsKpiCards: FC<IProps> = ({ data }) => {
             value={fmt(kpis.ncfTotal)}
             suffix="₽"
             valueStyle={{ color: kpis.ncfTotal >= 0 ? '#3f8600' : '#cf1322' }}
-          />
-        </Card>
-      </Col>
-    </Row>
-    <Row gutter={[16, 16]} className="dashboard-kpi-row" style={{ marginTop: 16 }}>
-      <Col xs={24} md={8}>
-        <Card size="small">
-          <Statistic
-            title="Итого планируемые поступления за СМР"
-            value={fmt(kpis.planIncomeTotal)}
-            suffix="₽"
-          />
-        </Card>
-      </Col>
-      <Col xs={24} md={8}>
-        <Card size="small">
-          <Statistic
-            title="Поступило за СМР по проекту"
-            value={fmt(kpis.factIncomeTotal)}
-            suffix="₽"
-          />
-        </Card>
-      </Col>
-      <Col xs={24} md={8}>
-        <Card size="small">
-          <Statistic
-            title="Остаток за СМР по проекту"
-            value={fmt(smrBalance)}
-            suffix="₽"
-            valueStyle={{ color: smrBalance >= 0 ? '#3f8600' : '#cf1322' }}
           />
         </Card>
       </Col>
