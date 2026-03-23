@@ -12,7 +12,7 @@ interface IProps {
 export const BddsPlanFactChart: FC<IProps> = ({ data }) => {
   const [mode, setMode] = useState<ChartMode>('monthly');
 
-  const { redAreaData, greenAreaData, lineData, cumulativeData } = useMemo(() => {
+  const { redAreaData, greenAreaData, lineData, cumulativeData, cumRedAreaData, cumGreenAreaData } = useMemo(() => {
     const raw = data.planFactIncome;
     const months: string[] = [];
     const planMap = new Map<string, number>();
