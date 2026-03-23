@@ -20,12 +20,16 @@ export const DashboardPage = () => {
 
   const handleYearFromChange = useCallback((y: number) => {
     setYearFrom(y);
+    setStartMonth(null);
     if (y > yearTo) setYearTo(y);
   }, [yearTo]);
 
   const handleYearToChange = useCallback((y: number) => {
     setYearTo(y);
-    if (y < yearFrom) setYearFrom(y);
+    if (y < yearFrom) {
+      setYearFrom(y);
+      setStartMonth(null);
+    }
   }, [yearFrom]);
 
   const handleProjectChange = useCallback((projectId: string | null, project: Project | null, allProjects: Project[]) => {
