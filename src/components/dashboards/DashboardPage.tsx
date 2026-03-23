@@ -34,11 +34,10 @@ export const DashboardPage = () => {
       const d = new Date(project.start_date);
       setYearFrom(d.getFullYear());
       setStartMonth(d.getMonth() + 1);
+      setYearTo(currentYear);
     } else if (!projectId) {
-      setYearFrom(currentYear);
       setStartMonth(null);
     }
-    setYearTo(currentYear);
   }, []);
 
   const { bdrData, bddsData, materialsDelta, loading, error } = useDashboard(yearFrom, yearTo, selectedProjectId, startMonth);
