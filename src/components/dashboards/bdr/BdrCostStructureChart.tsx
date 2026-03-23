@@ -43,7 +43,7 @@ export const BdrCostStructureChart: FC<IProps> = ({ data }) => {
     tooltip: {
       items: [
         {
-          channel: 'y',
+          field: 'value',
           valueFormatter: (v: number) => v.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽',
         },
       ],
