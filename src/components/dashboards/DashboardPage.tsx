@@ -28,16 +28,21 @@ export const DashboardPage = () => {
     if (y < yearFrom) setYearFrom(y);
   }, [yearFrom]);
 
-  const handleProjectChange = useCallback((projectId: string | null, project: Project | null) => {
+  const handleProjectChange = useCallback((projectId: string | null, project: Project | null, allProjects: Project[]) => {
     setSelectedProjectId(projectId);
     if (project?.start_date) {
       const d = new Date(project.start_date);
       setYearFrom(d.getFullYear());
       setStartMonth(d.getMonth() + 1);
-      setYearTo(currentYear);
     } else if (!projectId) {
+      const earliest = allProjects
+        .filter((p) => p.start_date)
+        .map((p) => new Date(p.start_date!).getFullYear())
+        .reduce((min, y) => Math.min(min, y), currentYear);
+      setYearFrom(earliest);
       setStartMonth(null);
     }
+    setYearTo(currentYear);
   }, []);
 
   const { bdrData, bddsData, materialsDelta, loading, error } = useDashboard(yearFrom, yearTo, selectedProjectId, startMonth);
