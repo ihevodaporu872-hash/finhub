@@ -11,6 +11,10 @@ interface IUseBdrSubResult {
   setSelectedProjectId: (id: string | null) => void;
   selectedMonth: number | null;
   setSelectedMonth: (month: number | null) => void;
+  yearFrom: number;
+  setYearFrom: (y: number) => void;
+  yearTo: number;
+  setYearTo: (y: number) => void;
   loading: boolean;
   error: string | null;
   createEntry: (data: BdrSubEntryFormData) => Promise<void>;
@@ -20,13 +24,15 @@ interface IUseBdrSubResult {
   reload: () => Promise<void>;
 }
 
-export function useBdrSub(subType: BdrSubType, _year: number, initialProjectId?: string | null): IUseBdrSubResult {
+export function useBdrSub(subType: BdrSubType, initialYear: number, initialProjectId?: string | null, initialYearTo?: number): IUseBdrSubResult {
   const [entries, setEntries] = useState<BdrSubEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId ?? null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(
     (subType === 'overhead_labor' || subType === 'fixed_expenses') ? new Date().getMonth() + 1 : null
   );
+  const [yearFrom, setYearFrom] = useState(initialYear);
+  const [yearTo, setYearTo] = useState(initialYearTo ?? initialYear);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +45,10 @@ export function useBdrSub(subType: BdrSubType, _year: number, initialProjectId?:
         projectsService.getProjects(),
         bdrSubService.getSubEntries(
           subType,
-          selectedProjectId ?? undefined
+          selectedProjectId ?? undefined,
+          yearFrom,
+          selectedMonth ?? undefined,
+          yearTo
         ),
       ]);
 
@@ -50,7 +59,7 @@ export function useBdrSub(subType: BdrSubType, _year: number, initialProjectId?:
     } finally {
       setLoading(false);
     }
-  }, [subType, selectedProjectId]);
+  }, [subType, selectedProjectId, yearFrom, yearTo, selectedMonth]);
 
   useEffect(() => {
     loadData();
@@ -117,6 +126,10 @@ export function useBdrSub(subType: BdrSubType, _year: number, initialProjectId?:
     setSelectedProjectId,
     selectedMonth,
     setSelectedMonth,
+    yearFrom,
+    setYearFrom,
+    yearTo,
+    setYearTo,
     loading,
     error,
     createEntry,

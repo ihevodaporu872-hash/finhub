@@ -10,11 +10,12 @@ import { BdrSubEntryForm } from './BdrSubEntryForm';
 interface IProps {
   subType: BdrSubType;
   year: number;
+  yearTo?: number;
   initialProjectId?: string | null;
   onClose: () => void;
 }
 
-export const BdrSubModal = ({ subType, year, initialProjectId, onClose }: IProps) => {
+export const BdrSubModal = ({ subType, year, yearTo: initialYearTo, initialProjectId, onClose }: IProps) => {
   const {
     entries,
     projects,
@@ -22,13 +23,17 @@ export const BdrSubModal = ({ subType, year, initialProjectId, onClose }: IProps
     setSelectedProjectId,
     selectedMonth,
     setSelectedMonth,
+    yearFrom,
+    setYearFrom,
+    yearTo,
+    setYearTo,
     loading,
     error,
     createEntry,
     updateEntry,
     deleteEntry,
     importFromExcel,
-  } = useBdrSub(subType, year, initialProjectId);
+  } = useBdrSub(subType, year, initialProjectId, initialYearTo);
 
   const [formVisible, setFormVisible] = useState(false);
   const [editingEntry, setEditingEntry] = useState<BdrSubEntry | null>(null);
@@ -90,7 +95,11 @@ export const BdrSubModal = ({ subType, year, initialProjectId, onClose }: IProps
         onMonthChange={setSelectedMonth}
         onAdd={handleAdd}
         onImport={importFromExcel}
-        year={year}
+        year={yearFrom}
+        yearFrom={yearFrom}
+        yearTo={yearTo}
+        onYearFromChange={setYearFrom}
+        onYearToChange={setYearTo}
       />
       <BdrSubTable
         subType={subType}
@@ -106,7 +115,7 @@ export const BdrSubModal = ({ subType, year, initialProjectId, onClose }: IProps
         editingEntry={editingEntry}
         selectedProjectId={selectedProjectId}
         selectedMonth={selectedMonth}
-        year={year}
+        year={yearFrom}
         onSave={handleSave}
         onCancel={() => {
           setFormVisible(false);

@@ -6,6 +6,7 @@ import { NDS_SUB_TYPES } from '../../../types/bdr';
 import type { Project } from '../../../types/projects';
 import { BdrSubExcelImport } from './BdrSubExcelImport';
 import { MONTHS } from '../../../utils/constants';
+import { YearSelect } from '../../common/YearSelect';
 
 interface IProps {
   subType: BdrSubType;
@@ -14,8 +15,12 @@ interface IProps {
   selectedProjectId: string | null;
   selectedMonth: number | null;
   year: number;
+  yearFrom?: number;
+  yearTo?: number;
   onProjectChange: (id: string | null) => void;
   onMonthChange: (month: number | null) => void;
+  onYearFromChange?: (y: number) => void;
+  onYearToChange?: (y: number) => void;
   onAdd: () => void;
   onImport: (data: BdrSubEntryFormData[]) => Promise<void>;
 }
@@ -31,6 +36,10 @@ export const BdrSubToolbar = ({
   onMonthChange,
   onAdd,
   onImport,
+  yearFrom,
+  yearTo,
+  onYearFromChange,
+  onYearToChange,
 }: IProps) => {
   const isOverheadLabor = subType === 'overhead_labor';
   const isFixedExpenses = subType === 'fixed_expenses';
@@ -78,8 +87,25 @@ export const BdrSubToolbar = ({
     XLSX.writeFile(wb, `export_${subType}${monthSuffix}_${year}.xlsx`);
   };
 
+  const handleYearFromChange = (y: number) => {
+    onYearFromChange?.(y);
+    if (yearTo !== undefined && y > yearTo) onYearToChange?.(y);
+  };
+
+  const handleYearToChange = (y: number) => {
+    onYearToChange?.(y);
+    if (yearFrom !== undefined && y < yearFrom) onYearFromChange?.(y);
+  };
+
   return (
     <Space className="mb-16" wrap>
+      {isFixedExpenses && yearFrom !== undefined && yearTo !== undefined && (
+        <>
+          <YearSelect value={yearFrom} onChange={handleYearFromChange} />
+          <span>—</span>
+          <YearSelect value={yearTo} onChange={handleYearToChange} />
+        </>
+      )}
       {hasMonthFilter && (
         <Select
           value={selectedMonth}

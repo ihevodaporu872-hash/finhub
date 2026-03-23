@@ -11,8 +11,9 @@ function lastDayOfMonth(year: number, month: number): string {
 export async function getSubEntries(
   subType: BdrSubType,
   projectId?: string,
-  year?: number,
-  month?: number
+  yearFrom?: number,
+  month?: number,
+  yearTo?: number
 ): Promise<BdrSubEntry[]> {
   let query = supabase
     .from('bdr_sub_entries')
@@ -24,16 +25,17 @@ export async function getSubEntries(
   if (projectId) {
     query = query.eq('project_id', projectId);
   }
-  if (year) {
-    if (month) {
+  if (yearFrom) {
+    const endYear = yearTo ?? yearFrom;
+    if (month && yearFrom === endYear) {
       const m = String(month).padStart(2, '0');
       query = query
-        .gte('entry_date', `${year}-${m}-01`)
-        .lte('entry_date', lastDayOfMonth(year, month));
+        .gte('entry_date', `${yearFrom}-${m}-01`)
+        .lte('entry_date', lastDayOfMonth(yearFrom, month));
     } else {
       query = query
-        .gte('entry_date', `${year}-01-01`)
-        .lte('entry_date', `${year}-12-31`);
+        .gte('entry_date', `${yearFrom}-01-01`)
+        .lte('entry_date', `${endYear}-12-31`);
     }
   }
 
