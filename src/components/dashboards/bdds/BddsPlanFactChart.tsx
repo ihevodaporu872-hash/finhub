@@ -83,6 +83,15 @@ export const BddsPlanFactChart: FC<IProps> = ({ data }) => {
           },
         },
         style: { lineWidth: 2 },
+        tooltip: {
+          items: [
+            {
+              channel: 'y',
+              valueFormatter: (v: number) =>
+                v.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽',
+            },
+          ],
+        },
       },
     ],
     interaction: {

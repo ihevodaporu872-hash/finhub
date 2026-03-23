@@ -22,9 +22,5 @@ CREATE INDEX idx_bdds_receipt_details_project_year
 -- RLS
 ALTER TABLE bdds_receipt_details ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all for authenticated"
-  ON bdds_receipt_details
-  FOR ALL
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
+CREATE POLICY "bdds_receipt_details_all" ON bdds_receipt_details
+  FOR ALL USING (true) WITH CHECK (true);
