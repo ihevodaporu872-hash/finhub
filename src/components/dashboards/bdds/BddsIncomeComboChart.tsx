@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import { Card } from 'antd';
 import { DualAxes } from '@ant-design/charts';
-import type { IBddsDashboardData } from '../../../types/dashboard';
+import type { IBddsDashboardData, IIncomeByProjectPoint, IMonthDataPoint } from '../../../types/dashboard';
 
 interface IProps {
   data: IBddsDashboardData;
@@ -17,6 +17,9 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
 
   const config = {
     xField: 'month',
+    interaction: {
+      tooltip: { shared: true },
+    },
     children: [
       {
         data: data.incomeByProject,
@@ -43,14 +46,11 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
         },
         tooltip: {
           items: [
-            {
-              channel: 'y',
-              valueFormatter,
-            },
+            (d: IIncomeByProjectPoint) => ({
+              name: d.project,
+              value: valueFormatter(d.value),
+            }),
           ],
-        },
-        interaction: {
-          tooltip: { shared: true },
         },
       },
       {
@@ -70,10 +70,10 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
         },
         tooltip: {
           items: [
-            {
-              channel: 'y',
-              valueFormatter,
-            },
+            (d: IMonthDataPoint) => ({
+              name: d.type,
+              value: valueFormatter(d.value),
+            }),
           ],
         },
       },
