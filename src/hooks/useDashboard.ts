@@ -27,7 +27,9 @@ interface IYearBdrData {
   planMap: Map<string, MonthValues>;
   factMap: Map<string, MonthValues>;
   smrTotals: MonthValues;
+  smrTotalsWithVat: MonthValues;
   actualTotals: { ks: MonthValues; fact: MonthValues };
+  actualTotalsWithVat: { ks: MonthValues; fact: MonthValues };
   subTotals: Record<string, MonthValues>;
 }
 
@@ -131,10 +133,11 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
 
       const [bdrResults, bddsResults, allProjects] = await Promise.all([
         Promise.all(years.map(async (year): Promise<IYearBdrData> => {
-          const [planEntries, factEntries, smr, mat, lab, sub, des, ren, ovl, ovhMap, act] = await Promise.all([
+          const [planEntries, factEntries, smr, smrVat, mat, lab, sub, des, ren, ovl, ovhMap, act, actVat] = await Promise.all([
             bdrService.getEntries(year, 'plan', pid),
             bdrService.getEntries(year, 'fact', pid),
             bdrService.getSmrTotalsByMonth(year, pid),
+            bdrService.getSmrTotalsByMonthWithVat(year, pid),
             bdrSubService.getSubTotalsByMonth('materials', year, pid),
             bdrSubService.getSubTotalsByMonth('labor', year, pid),
             bdrSubService.getSubTotalsByMonth('subcontract', year, pid),
@@ -143,13 +146,16 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
             bdrSubService.getSubTotalsByMonth('overhead_labor', year, pid),
             bdrSubService.getMultiSubTotalsByMonth(OVERHEAD_SUB_TYPES, year, pid),
             actualExecutionService.getAggregatedTotals(year, pid),
+            actualExecutionService.getAggregatedTotalsWithVat(year, pid),
           ]);
           return {
             year,
             planMap: buildEntryMap(planEntries, 'row_code'),
             factMap: buildEntryMap(factEntries, 'row_code'),
             smrTotals: smr,
+            smrTotalsWithVat: smrVat,
             actualTotals: act,
+            actualTotalsWithVat: actVat,
             subTotals: {
               cost_materials: mat, cost_labor: lab, cost_subcontract: sub,
               cost_design: des, cost_rental: ren, overhead_01: ovl,
@@ -216,8 +222,10 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
     let fixedFact = 0, otherFact = 0;
 
     const scurve: IMonthDataPoint[] = [];
+    const scurveWithVat: IMonthDataPoint[] = [];
     const costStructure: ICostItem[] = [];
     let cumPlan = 0, cumFact = 0;
+    let cumPlanVat = 0, cumFactVat = 0;
 
     for (const d of bdrYears) {
       for (const m of MONTHS) {
@@ -246,6 +254,13 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         cumFact += rf;
         scurve.push({ month: label, value: cumPlan, type: 'План' });
         scurve.push({ month: label, value: cumFact, type: 'Факт' });
+
+        const rpVat = d.smrTotalsWithVat[m.key] || 0;
+        const rfVat = d.actualTotalsWithVat.ks[m.key] || getVal(d.factMap, 'revenue_smr', m.key);
+        cumPlanVat += rpVat;
+        cumFactVat += rfVat;
+        scurveWithVat.push({ month: label, value: cumPlanVat, type: 'План' });
+        scurveWithVat.push({ month: label, value: cumFactVat, type: 'Факт' });
       }
     }
 
@@ -261,12 +276,15 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
     ];
 
     const revenueByMonth: IMonthDataPoint[] = [];
+    const revenueByMonthWithVat: IMonthDataPoint[] = [];
     for (const d of bdrYears) {
       for (const m of MONTHS) {
         if (!shouldShowMonth(d.year, m.key)) continue;
         const label = monthLabel(m.key, d.year, multiYear);
         revenueByMonth.push({ month: label, value: calcBdr('revenue', m.key, 'plan', d), type: 'План' });
         revenueByMonth.push({ month: label, value: calcBdr('revenue', m.key, 'fact', d), type: 'Факт' });
+        revenueByMonthWithVat.push({ month: label, value: d.smrTotalsWithVat[m.key] || 0, type: 'План' });
+        revenueByMonthWithVat.push({ month: label, value: d.actualTotalsWithVat.ks[m.key] || calcBdr('revenue', m.key, 'fact', d), type: 'Факт' });
       }
     }
 
@@ -276,7 +294,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         operatingProfit: operatingFact, operatingProfitPct: operatingPctAvg,
         netProfit: netProfitFact, costTotal: costFact,
       },
-      scurve, costStructure, waterfall, marginPercent, revenueByMonth,
+      scurve, scurveWithVat, costStructure, waterfall, marginPercent, revenueByMonth, revenueByMonthWithVat,
     };
   }, [bdrYears, loading, multiYear, shouldShowMonth]);
 

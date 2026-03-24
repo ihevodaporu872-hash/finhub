@@ -1,10 +1,11 @@
 import { type FC, useMemo, useState } from 'react';
-import { Card, Radio, Tooltip } from 'antd';
+import { Card, Radio, Space, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Mix } from '@ant-design/charts';
 import type { IBdrDashboardData } from '../../../types/dashboard';
 
 type ChartMode = 'monthly' | 'cumulative';
+type VatMode = 'without' | 'with';
 
 interface IProps {
   data: IBdrDashboardData;
@@ -25,9 +26,15 @@ const HELP_TEXT = `На графике вы всегда увидите две �
 
 export const BdrScurveChart: FC<IProps> = ({ data }) => {
   const [mode, setMode] = useState<ChartMode>('cumulative');
+  const [vatMode, setVatMode] = useState<VatMode>('without');
+
+  const isWithVat = vatMode === 'with';
+
+  const revenueByMonth = isWithVat ? data.revenueByMonthWithVat : data.revenueByMonth;
+  const scurve = isWithVat ? data.scurveWithVat : data.scurve;
 
   const { monthlyRedArea, monthlyGreenArea, cumRedArea, cumGreenArea } = useMemo(() => {
-    const raw = data.revenueByMonth;
+    const raw = revenueByMonth;
     const months: string[] = [];
     const planMap = new Map<string, number>();
     const factMap = new Map<string, number>();
@@ -54,19 +61,19 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     });
 
     const cumRedArea = months.map(m => {
-      const cumPlanVal = data.scurve.find(d => d.month === m && d.type === 'План')?.value ?? 0;
-      const cumFactVal = data.scurve.find(d => d.month === m && d.type === 'Факт')?.value ?? 0;
+      const cumPlanVal = scurve.find(d => d.month === m && d.type === 'План')?.value ?? 0;
+      const cumFactVal = scurve.find(d => d.month === m && d.type === 'Факт')?.value ?? 0;
       return { month: m, upper: cumPlanVal, lower: Math.min(cumPlanVal, cumFactVal) };
     });
 
     const cumGreenArea = months.map(m => {
-      const cumPlanVal = data.scurve.find(d => d.month === m && d.type === 'План')?.value ?? 0;
-      const cumFactVal = data.scurve.find(d => d.month === m && d.type === 'Факт')?.value ?? 0;
+      const cumPlanVal = scurve.find(d => d.month === m && d.type === 'План')?.value ?? 0;
+      const cumFactVal = scurve.find(d => d.month === m && d.type === 'Факт')?.value ?? 0;
       return { month: m, upper: cumFactVal, lower: Math.min(cumPlanVal, cumFactVal) };
     });
 
     return { monthlyRedArea, monthlyGreenArea, cumRedArea, cumGreenArea };
-  }, [data.revenueByMonth, data.scurve]);
+  }, [revenueByMonth, scurve]);
 
   const areaBase = {
     xField: 'month',
@@ -111,7 +118,7 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     children: [
       { type: 'area' as const, data: monthlyRedArea, ...areaBase, style: { fill: '#ff4d4f', fillOpacity: 0.25, stroke: 'transparent' } },
       { type: 'area' as const, data: monthlyGreenArea, ...areaBase, style: { fill: '#52c41a', fillOpacity: 0.25, stroke: 'transparent' } },
-      { ...lineBase, data: data.revenueByMonth },
+      { ...lineBase, data: revenueByMonth },
     ],
     interaction: { tooltip: { shared: true } },
   };
@@ -120,22 +127,34 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     children: [
       { type: 'area' as const, data: cumRedArea, ...areaBase, style: { fill: '#ff4d4f', fillOpacity: 0.25, stroke: 'transparent' } },
       { type: 'area' as const, data: cumGreenArea, ...areaBase, style: { fill: '#52c41a', fillOpacity: 0.25, stroke: 'transparent' } },
-      { ...lineBase, data: data.scurve },
+      { ...lineBase, data: scurve },
     ],
     interaction: { tooltip: { shared: true } },
   };
 
   const titleExtra = (
-    <Radio.Group
-      value={mode}
-      onChange={e => setMode(e.target.value)}
-      size="small"
-      optionType="button"
-      buttonStyle="solid"
-    >
-      <Radio.Button value="monthly">Помесячно</Radio.Button>
-      <Radio.Button value="cumulative">Нарастающий итог</Radio.Button>
-    </Radio.Group>
+    <Space size="small" wrap>
+      <Radio.Group
+        value={vatMode}
+        onChange={e => setVatMode(e.target.value)}
+        size="small"
+        optionType="button"
+        buttonStyle="solid"
+      >
+        <Radio.Button value="without">Без НДС</Radio.Button>
+        <Radio.Button value="with">С НДС</Radio.Button>
+      </Radio.Group>
+      <Radio.Group
+        value={mode}
+        onChange={e => setMode(e.target.value)}
+        size="small"
+        optionType="button"
+        buttonStyle="solid"
+      >
+        <Radio.Button value="monthly">Помесячно</Radio.Button>
+        <Radio.Button value="cumulative">Нарастающий итог</Radio.Button>
+      </Radio.Group>
+    </Space>
   );
 
   const title = (

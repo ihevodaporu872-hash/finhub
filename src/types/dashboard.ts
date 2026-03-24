@@ -17,10 +17,12 @@ export interface IWaterfallItem {
 
 export interface IBdrDashboardData {
   revenueByMonth: IMonthDataPoint[];
+  revenueByMonthWithVat: IMonthDataPoint[];
   costStructure: ICostItem[];
   waterfall: IWaterfallItem[];
   marginPercent: number;
   scurve: IMonthDataPoint[];
+  scurveWithVat: IMonthDataPoint[];
   kpis: {
     revenueFact: number;
     revenuePlan: number;
