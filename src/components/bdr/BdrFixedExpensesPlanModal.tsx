@@ -27,7 +27,6 @@ export const BdrFixedExpensesPlanModal: FC<IProps> = ({ year, open, onClose, onS
   const handleOk = async () => {
     try {
       setSaving(true);
-      console.log('[ОФЗ модалка] сохраняю', { year, amount });
       await fixedPlanService.upsertFixedExpensesPlan(year, amount);
       message.success('ОФЗ сохранён');
       onSaved();

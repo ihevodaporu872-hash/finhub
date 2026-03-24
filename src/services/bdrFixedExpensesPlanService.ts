@@ -24,8 +24,6 @@ export async function getFixedExpensesPlans(yearFrom: number, yearTo: number): P
     .gte('year', yearFrom)
     .lte('year', yearTo);
 
-  console.log('[ОФЗ сервис] getPlans', { yearFrom, yearTo, data, error });
-
   if (error) throw error;
 
   const result: Record<number, number> = {};
@@ -37,22 +35,16 @@ export async function getFixedExpensesPlans(yearFrom: number, yearTo: number): P
 
 export async function upsertFixedExpensesPlan(year: number, amount: number): Promise<void> {
   const existing = await getFixedExpensesPlan(year);
-  console.log('[ОФЗ сервис] upsert', { year, amount, existing });
-
   if (existing) {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('bdr_fixed_expenses_plan')
       .update({ amount, updated_at: new Date().toISOString() })
-      .eq('id', existing.id)
-      .select();
-    console.log('[ОФЗ сервис] update result', { data, error });
+      .eq('id', existing.id);
     if (error) throw error;
   } else {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('bdr_fixed_expenses_plan')
-      .insert({ year, amount })
-      .select();
-    console.log('[ОФЗ сервис] insert result', { data, error });
+      .insert({ year, amount });
     if (error) throw error;
   }
 }
