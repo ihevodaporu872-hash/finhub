@@ -5,6 +5,7 @@ import { BdrScurveChart } from './BdrScurveChart';
 import { BdrCostStructureChart } from './BdrCostStructureChart';
 import { BdrMarginGauge } from './BdrMarginGauge';
 import { BdrWaterfallChart } from './BdrWaterfallChart';
+import { BdrMarginTrendChart } from './BdrMarginTrendChart';
 import type { IBdrDashboardData } from '../../../types/dashboard';
 
 interface IProps {
@@ -28,6 +29,7 @@ export const BdrDashboard: FC<IProps> = ({ data, loading }) => {
           <BdrMarginGauge data={data} />
         </Col>
       </Row>
+      <BdrMarginTrendChart data={data} />
       <BdrWaterfallChart data={data} />
     </div>
   );

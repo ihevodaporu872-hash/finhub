@@ -15,6 +15,13 @@ export interface IWaterfallItem {
   value: number;
 }
 
+export interface IMarginTrendPoint {
+  month: string;
+  grossMargin: number;
+  netMargin: number;
+  revenueFact: number;
+}
+
 export interface IBdrDashboardData {
   revenueByMonth: IMonthDataPoint[];
   revenueByMonthWithVat: IMonthDataPoint[];
@@ -23,6 +30,7 @@ export interface IBdrDashboardData {
   marginPercent: number;
   scurve: IMonthDataPoint[];
   scurveWithVat: IMonthDataPoint[];
+  marginTrend: IMarginTrendPoint[];
   kpis: {
     revenueFact: number;
     revenuePlan: number;

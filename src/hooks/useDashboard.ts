@@ -9,7 +9,7 @@ import * as projectsService from '../services/projectsService';
 import { MONTHS, SECTION_NAMES, SECTION_ORDER } from '../utils/constants';
 import { OVERHEAD_CODES } from '../utils/bdrConstants';
 import { calculateNetCashFlow } from '../utils/calculations';
-import type { IBdrDashboardData, IBddsDashboardData, IMaterialsDeltaData, IMonthDataPoint, IIncomeByProjectPoint, ICostItem, IWaterfallItem } from '../types/dashboard';
+import type { IBdrDashboardData, IBddsDashboardData, IMaterialsDeltaData, IMonthDataPoint, IIncomeByProjectPoint, ICostItem, IWaterfallItem, IMarginTrendPoint } from '../types/dashboard';
 import type { Project } from '../types/projects';
 import type { MonthValues, BdrSubType } from '../types/bdr';
 import type { BddsCategory, BddsRow, SectionCode } from '../types/bdds';
@@ -222,6 +222,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
     const scurve: IMonthDataPoint[] = [];
     const scurveWithVat: IMonthDataPoint[] = [];
     const costStructure: ICostItem[] = [];
+    const marginTrend: IMarginTrendPoint[] = [];
     let cumPlan = 0, cumFact = 0;
     let cumPlanVat = 0, cumFactVat = 0;
 
@@ -239,8 +240,13 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         marginalFact += calcBdr('marginal_profit', m.key, 'fact', d);
         operatingFact += calcBdr('operating_profit', m.key, 'fact', d);
         netProfitFact += calcBdr('net_profit', m.key, 'fact', d);
-        fixedFact += getVal(d.factMap, 'fixed_expenses', m.key);
+        const fixedMonth = getVal(d.factMap, 'fixed_expenses', m.key);
+        fixedFact += fixedMonth;
         otherFact += getVal(d.factMap, 'other_income_expense', m.key);
+
+        const grossMargin = rf ? ((rf - ct) / rf) * 100 : 0;
+        const netMargin = rf ? ((rf - ct - fixedMonth) / rf) * 100 : 0;
+        marginTrend.push({ month: label, grossMargin, netMargin, revenueFact: rf });
 
         for (const code of COST_CODES) {
           const val = calcBdr(code, m.key, 'fact', d);
@@ -292,7 +298,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         operatingProfit: operatingFact, operatingProfitPct: operatingPctAvg,
         netProfit: netProfitFact, costTotal: costFact,
       },
-      scurve, scurveWithVat, costStructure, waterfall, marginPercent, revenueByMonth, revenueByMonthWithVat,
+      scurve, scurveWithVat, costStructure, waterfall, marginPercent, revenueByMonth, revenueByMonthWithVat, marginTrend,
     };
   }, [bdrYears, loading, multiYear, shouldShowMonth]);
 
