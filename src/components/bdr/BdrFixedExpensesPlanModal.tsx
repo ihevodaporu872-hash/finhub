@@ -31,7 +31,8 @@ export const BdrFixedExpensesPlanModal: FC<IProps> = ({ year, open, onClose, onS
       message.success('ОФЗ сохранён');
       onSaved();
       onClose();
-    } catch {
+    } catch (err) {
+      console.error('ОФЗ save error:', err);
       message.error('Ошибка сохранения');
     } finally {
       setSaving(false);

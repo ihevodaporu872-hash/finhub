@@ -125,8 +125,9 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
           }
         }
 
-        // Расчёт ежемесячного плана ОФЗ
+        // Расчёт ежемесячного факта ОФЗ
         const annualOfz = fixedPlans[yr] || 0;
+        console.log(`[ОФЗ] год=${yr}, годовая сумма=${annualOfz}, ежемесячно=${annualOfz / 12}`);
         let fixedExpensesFactMonthly = annualOfz / 12;
 
         // Для проекта — доля от общего выполнения

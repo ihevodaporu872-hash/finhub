@@ -14,9 +14,5 @@ CREATE TABLE IF NOT EXISTS bdr_fixed_expenses_plan (
 -- RLS
 ALTER TABLE bdr_fixed_expenses_plan ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all for authenticated"
-  ON bdr_fixed_expenses_plan
-  FOR ALL
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
+CREATE POLICY "bdr_fixed_expenses_plan_all" ON bdr_fixed_expenses_plan
+  FOR ALL USING (true) WITH CHECK (true);

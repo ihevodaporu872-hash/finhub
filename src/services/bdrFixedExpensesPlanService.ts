@@ -34,14 +34,20 @@ export async function getFixedExpensesPlans(yearFrom: number, yearTo: number): P
 }
 
 export async function upsertFixedExpensesPlan(year: number, amount: number): Promise<void> {
-  const { error } = await supabase
-    .from('bdr_fixed_expenses_plan')
-    .upsert(
-      { year, amount, updated_at: new Date().toISOString() },
-      { onConflict: 'year' }
-    );
+  const existing = await getFixedExpensesPlan(year);
 
-  if (error) throw error;
+  if (existing) {
+    const { error } = await supabase
+      .from('bdr_fixed_expenses_plan')
+      .update({ amount, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from('bdr_fixed_expenses_plan')
+      .insert({ year, amount });
+    if (error) throw error;
+  }
 }
 
 /** Доля проекта в общем выполнении за год (по fact_amount из actual_execution_entries) */
