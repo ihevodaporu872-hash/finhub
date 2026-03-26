@@ -155,16 +155,7 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     legend: false,
   };
 
-  const totalMonths = chartData.months.length;
-  const tickInterval = totalMonths <= 12 ? 1 : totalMonths <= 24 ? 2 : 3;
-
   const axisConfig = {
-    x: {
-      labelAutoRotate: true,
-      labelAutoHide: false,
-      labelFormatter: (v: string, _: unknown, idx: number) =>
-        idx % tickInterval === 0 ? v : '',
-    },
     y: {
       title: 'Сумма (млн руб.)',
       labelFormatter: (v: number) => formatMln(v),
