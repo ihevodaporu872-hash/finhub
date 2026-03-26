@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
+import * as bddsService from '../services/bddsService';
 
 export interface IReceivablesPoint {
   month: string;
@@ -18,7 +19,7 @@ interface IUseReceivablesResult {
 }
 
 const MONTH_NAMES = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-const GUARANTEE_RATE = 0.05; // 5% гарантийные удержания
+const GUARANTEE_RATE = 0.05;
 
 export function useReceivablesData(yearFrom: number, yearTo: number, projectId: string | null): IUseReceivablesResult {
   const [data, setData] = useState<IReceivablesPoint[]>([]);
@@ -30,7 +31,9 @@ export function useReceivablesData(yearFrom: number, yearTo: number, projectId: 
     setError(null);
     try {
       const monthKeys: string[] = [];
+      const years: number[] = [];
       for (let y = yearFrom; y <= yearTo; y++) {
+        years.push(y);
         for (let m = 1; m <= 12; m++) {
           monthKeys.push(`${y}-${String(m).padStart(2, '0')}`);
         }
@@ -42,26 +45,32 @@ export function useReceivablesData(yearFrom: number, yearTo: number, projectId: 
         .select('month_key, ks_amount')
         .in('month_key', monthKeys);
       if (projectId) ksQuery = ksQuery.eq('project_id', projectId);
-      const { data: ksData, error: ksErr } = await ksQuery;
-      if (ksErr) throw ksErr;
 
-      // 2. Загрузка поступлений из bdds_entries (operating income fact)
-      const years: number[] = [];
-      for (let y = yearFrom; y <= yearTo; y++) years.push(y);
+      // 2. Загрузка категорий БДДС
+      const categoriesPromise = bddsService.getCategories();
 
-      const receiptQueries = years.map((y) =>
-        supabase
-          .from('bdds_entries')
-          .select('month, amount, bdds_categories!inner(section_code, row_type, is_calculated)')
-          .eq('year', y)
-          .eq('type', 'fact')
+      // 3. Загрузка фактических записей БДДС за каждый год
+      const entriesPromises = years.map((y) => bddsService.getEntries(y, 'fact', projectId || undefined));
+
+      const [ksResult, categories, ...entriesResults] = await Promise.all([
+        ksQuery,
+        categoriesPromise,
+        ...entriesPromises,
+      ]);
+
+      if (ksResult.error) throw ksResult.error;
+
+      // Определяем ID категорий операционных доходов
+      const incomeCategryIds = new Set(
+        categories
+          .filter((c) => c.section_code === 'operating' && c.row_type === 'income' && !c.is_calculated)
+          .map((c) => c.id)
       );
-      const receiptResults = await Promise.all(receiptQueries);
 
       // Агрегация КС-2 по месяцам
       const ksMap = new Map<string, number>();
       for (const key of monthKeys) ksMap.set(key, 0);
-      for (const e of ksData || []) {
+      for (const e of ksResult.data || []) {
         ksMap.set(e.month_key, (ksMap.get(e.month_key) || 0) + (Number(e.ks_amount) || 0));
       }
 
@@ -69,12 +78,10 @@ export function useReceivablesData(yearFrom: number, yearTo: number, projectId: 
       const receiptMap = new Map<string, number>();
       for (const key of monthKeys) receiptMap.set(key, 0);
       for (let i = 0; i < years.length; i++) {
-        const res = receiptResults[i];
-        if (res.error) throw res.error;
+        const entries = entriesResults[i];
         const y = years[i];
-        for (const e of res.data || []) {
-          const cat = e.bdds_categories as unknown as { section_code: string; row_type: string; is_calculated: boolean };
-          if (cat.section_code === 'operating' && cat.row_type === 'income' && !cat.is_calculated) {
+        for (const e of entries) {
+          if (incomeCategryIds.has(e.category_id)) {
             const key = `${y}-${String(e.month).padStart(2, '0')}`;
             receiptMap.set(key, (receiptMap.get(key) || 0) + (Number(e.amount) || 0));
           }
@@ -89,7 +96,7 @@ export function useReceivablesData(yearFrom: number, yearTo: number, projectId: 
         if (ks > 0 || rec > 0) lastFactKey = key;
       }
 
-      // Формируем кумулятивные данные, обрезая пустое будущее
+      // Формируем кумулятивные данные
       const points: IReceivablesPoint[] = [];
       let cumKs = 0;
       let cumReceipts = 0;
