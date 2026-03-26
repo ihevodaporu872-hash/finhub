@@ -3,6 +3,7 @@ import { Card, Tabs, Alert } from 'antd';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useBdrBubbleData } from '../../hooks/useBdrBubbleData';
 import { useBdrExecutionVsKs } from '../../hooks/useBdrExecutionVsKs';
+import { useReceivablesData } from '../../hooks/useReceivablesData';
 import { DashboardToolbar } from './DashboardToolbar';
 import { BdrDashboard } from './bdr/BdrDashboard';
 import { BdrDashboard2 } from './bdr2/BdrDashboard2';
@@ -52,9 +53,10 @@ export const DashboardPage = () => {
   const { bdrData, bddsData, materialsDelta, loading, error } = useDashboard(yearFrom, yearTo, selectedProjectId, startMonth);
   const { data: bubbleData, loading: bubbleLoading, error: bubbleError } = useBdrBubbleData(yearFrom, yearTo);
   const { data: execVsKsData, loading: execVsKsLoading, error: execVsKsError } = useBdrExecutionVsKs(yearFrom, yearTo, selectedProjectId);
+  const { data: receivablesData, loading: receivablesLoading, error: receivablesError } = useReceivablesData(yearFrom, yearTo, selectedProjectId);
 
-  if (error || bubbleError || execVsKsError) {
-    return <Alert type="error" message="Ошибка" description={error || bubbleError || execVsKsError} showIcon />;
+  if (error || bubbleError || execVsKsError || receivablesError) {
+    return <Alert type="error" message="Ошибка" description={error || bubbleError || execVsKsError || receivablesError} showIcon />;
   }
 
   const items = [
@@ -76,7 +78,7 @@ export const DashboardPage = () => {
     {
       key: 'bdds2',
       label: 'БДДС #2',
-      children: <BddsDashboard2 data={bddsData} loading={loading} />,
+      children: <BddsDashboard2 data={bddsData} receivablesData={receivablesData} loading={loading || receivablesLoading} />,
     },
   ];
 
