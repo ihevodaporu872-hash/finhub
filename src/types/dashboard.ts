@@ -8,6 +8,10 @@ export interface ICostItem {
   month: string;
   category: string;
   value: number;
+  planValue: number;
+  monthTotal: number;
+  planTotal: number;
+  percent: number;
 }
 
 export interface IWaterfallItem {
@@ -39,6 +43,7 @@ export interface IBdrDashboardData {
     operatingProfitPct: number;
     netProfit: number;
     costTotal: number;
+    costPlanTotal: number;
   };
 }
 

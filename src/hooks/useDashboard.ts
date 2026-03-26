@@ -231,7 +231,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
   const bdrData = useMemo((): IBdrDashboardData | null => {
     if (loading || !bdrYears.length) return null;
 
-    let revenuePlan = 0, revenueFact = 0, costFact = 0, marginalFact = 0;
+    let revenuePlan = 0, revenueFact = 0, costFact = 0, costPlan = 0, marginalFact = 0;
     let operatingFact = 0, netProfitFact = 0;
     const costFactByCode: Record<string, number> = {};
     let fixedFact = 0, otherFact = 0;
@@ -243,17 +243,40 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
     let cumPlan = 0, cumFact = 0;
     let cumPlanVat = 0, cumFactVat = 0;
 
+    // Порядок слоёв снизу вверх: Материалы -> Субподряд -> ФОТ -> Аренда -> Накладные -> Проектные
+    const COST_CODES_ORDERED = ['cost_materials', 'cost_subcontract', 'cost_labor', 'cost_rental', 'cost_overhead', 'cost_design'];
+
+    // Определяем последний месяц с фактическими затратами (year*100+month)
+    let lastFactIdx = 0;
+    for (const d of bdrYears) {
+      for (const m of MONTHS) {
+        if (!shouldShowMonth(d.year, m.key)) continue;
+        const ct = calcBdr('cost_total', m.key, 'fact', d);
+        if (ct > 0) lastFactIdx = d.year * 100 + m.key;
+      }
+    }
+
     for (const d of bdrYears) {
       for (const m of MONTHS) {
         if (!shouldShowMonth(d.year, m.key)) continue;
         const label = monthLabel(m.key, d.year, multiYear);
+        const curIdx = d.year * 100 + m.key;
+
+        // Обрезаем пустые будущие периоды после последнего факта
+        if (lastFactIdx && curIdx > lastFactIdx) {
+          const ct = calcBdr('cost_total', m.key, 'fact', d);
+          if (ct === 0) continue;
+        }
+
         const rp = calcBdr('revenue', m.key, 'plan', d);
         const rf = calcBdr('revenue', m.key, 'fact', d);
         revenuePlan += rp;
         revenueFact += rf;
 
         const ct = calcBdr('cost_total', m.key, 'fact', d);
+        const cp = calcBdr('cost_total', m.key, 'plan', d);
         costFact += ct;
+        costPlan += cp;
         marginalFact += calcBdr('marginal_profit', m.key, 'fact', d);
         operatingFact += calcBdr('operating_profit', m.key, 'fact', d);
         netProfitFact += calcBdr('net_profit', m.key, 'fact', d);
@@ -265,10 +288,23 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         const netMargin = rf ? ((rf - ct - fixedMonth) / rf) * 100 : 0;
         marginTrend.push({ month: label, grossMargin, netMargin, revenueFact: rf });
 
-        for (const code of COST_CODES) {
+        // Вычисляем суммы для месяца
+        const monthFactTotal = COST_CODES.reduce((sum, c) => sum + calcBdr(c, m.key, 'fact', d), 0);
+        const monthPlanTotal = COST_CODES.reduce((sum, c) => sum + calcBdr(c, m.key, 'plan', d), 0);
+
+        for (const code of COST_CODES_ORDERED) {
           const val = calcBdr(code, m.key, 'fact', d);
+          const planVal = calcBdr(code, m.key, 'plan', d);
           costFactByCode[code] = (costFactByCode[code] || 0) + val;
-          costStructure.push({ month: label, category: COST_LABELS[code], value: val });
+          costStructure.push({
+            month: label,
+            category: COST_LABELS[code],
+            value: val,
+            planValue: planVal,
+            monthTotal: monthFactTotal,
+            planTotal: monthPlanTotal,
+            percent: monthFactTotal ? (val / monthFactTotal) * 100 : 0,
+          });
         }
 
         cumPlan += rp;
@@ -287,6 +323,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
 
     const operatingPctAvg = revenueFact ? (operatingFact / revenueFact) * 100 : 0;
     const marginPercent = revenueFact ? (marginalFact / revenueFact) * 100 : 0;
+    const costPlanTotal = costPlan;
 
     const waterfall: IWaterfallItem[] = [
       { name: 'Выручка', value: revenueFact },
@@ -313,7 +350,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
       kpis: {
         revenueFact, revenuePlan, marginalProfit: marginalFact,
         operatingProfit: operatingFact, operatingProfitPct: operatingPctAvg,
-        netProfit: netProfitFact, costTotal: costFact,
+        netProfit: netProfitFact, costTotal: costFact, costPlanTotal,
       },
       scurve, scurveWithVat, costStructure, waterfall, marginPercent, revenueByMonth, revenueByMonthWithVat, marginTrend,
     };
