@@ -11,24 +11,38 @@ interface IProps {
 
 const HELP_TEXT = `Как читать этот график:
 
-1. Анализ «Разрыва» (Зона НЗП)
-Расстояние между линией Выполнения и Актирования — ваше Незавершённое производство.
+1. Линии — нарастающий итог Выполнения и Актирования (КС-2).
 
-• Оранжевая/красная заливка: Выполнение > Актирование — копятся «замороженные» деньги.
-• Зелёная заливка: Актирование > Выполнения — «закрытие хвостов».
+2. Столбцы — месячная дельта (Выполнение минус КС-2):
+• Оранжевый столбец вверх: выполнили больше, чем сдали — растёт НЗП.
+• Зелёный столбец вниз: сдали больше, чем выполнили — закрытие хвостов.
 
-2. Оценка Ритмичности
-• Параллельные линии: Идеальная ситуация. Документооборот налажен.
-• Пересекающиеся линии: Проблемы с ПТО или заказчик затягивает приёмку.`;
+3. Оценка ритмичности:
+• Параллельные линии: документооборот налажен.
+• Расходящиеся линии: проблемы с ПТО или заказчик затягивает приёмку.`;
 
 interface IMonthData {
   month: string;
   fact: number;
   ks: number;
+  prevFact: number;
+  prevKs: number;
 }
 
 const formatMln = (v: number): string =>
   (v / 1_000_000).toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+const axisFormatter = (v: number): string => {
+  const mln = v / 1_000_000;
+  return mln % 1 === 0 ? mln.toFixed(0) : mln.toFixed(1);
+};
+
+const LEGEND_ITEMS = [
+  { color: '#ff7a45', label: 'Выполнение (нараст.)', isLine: true },
+  { color: '#1890ff', label: 'Актирование КС-2 (нараст.)', isLine: true },
+  { color: '#ff7a45', label: 'Дельта + (рост НЗП)', isRect: true },
+  { color: '#52c41a', label: 'Дельта − (закрытие)', isRect: true },
+];
 
 export const BdrExecutionVsKsChart: FC<IProps> = ({ data }) => {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -48,30 +62,37 @@ export const BdrExecutionVsKsChart: FC<IProps> = ({ data }) => {
       else entry.ks = pt.value;
     }
 
-    const result: IMonthData[] = order.map((m) => {
+    const raw = order.map((m) => {
       const e = map.get(m)!;
       return { month: m, fact: e.fact, ks: e.ks };
     });
 
     // Обрезаем пустые периоды в начале
     let startIdx = 0;
-    for (let i = 0; i < result.length; i++) {
-      if (result[i].fact > 0 || result[i].ks > 0) { startIdx = i; break; }
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i].fact > 0 || raw[i].ks > 0) { startIdx = i; break; }
     }
 
-    // Обрезаем пустые периоды в конце (плоская линия без новых данных)
-    let endIdx = result.length - 1;
-    for (let i = result.length - 1; i > startIdx; i--) {
-      if (result[i].fact !== result[i - 1]?.fact || result[i].ks !== result[i - 1]?.ks) {
+    // Обрезаем пустые периоды в конце
+    let endIdx = raw.length - 1;
+    for (let i = raw.length - 1; i > startIdx; i--) {
+      if (raw[i].fact !== raw[i - 1]?.fact || raw[i].ks !== raw[i - 1]?.ks) {
         endIdx = i;
         break;
       }
     }
 
-    return result.slice(startIdx, endIdx + 1);
+    const sliced = raw.slice(startIdx, endIdx + 1);
+
+    // Добавляем prev-значения для расчёта месячной дельты
+    return sliced.map((m, i) => ({
+      ...m,
+      prevFact: i > 0 ? sliced[i - 1].fact : 0,
+      prevKs: i > 0 ? sliced[i - 1].ks : 0,
+    }));
   }, [data]);
 
-  // KPI — последний месяц
+  // KPI — последний месяц (кумулятивные значения)
   const kpi = useMemo(() => {
     const last = monthData[monthData.length - 1];
     if (!last) return { fact: 0, ks: 0, nzp: 0 };
@@ -79,52 +100,45 @@ export const BdrExecutionVsKsChart: FC<IProps> = ({ data }) => {
   }, [monthData]);
 
   // Данные для графика
-  const { lineData, areaSegments } = useMemo(() => {
+  const { lineData, deltaColumns } = useMemo(() => {
     const lineData: Array<{ month: string; value: number; type: string }> = [];
+    const deltaColumns: Array<{ month: string; value: number; deltaColor: string }> = [];
 
     for (const m of monthData) {
       lineData.push({ month: m.month, value: m.fact, type: 'Выполнение' });
       lineData.push({ month: m.month, value: m.ks, type: 'Актирование (КС-2)' });
-    }
 
-    // Сегменты заливки между линиями
-    const areaSegments: Array<{ month: string; upper: number; lower: number; fill: string }> = [];
-    for (const m of monthData) {
-      const factAbove = m.fact >= m.ks;
-      areaSegments.push({
+      // Месячная дельта = (выполнение за месяц) - (КС-2 за месяц)
+      const monthFact = m.fact - m.prevFact;
+      const monthKs = m.ks - m.prevKs;
+      const delta = monthFact - monthKs;
+
+      deltaColumns.push({
         month: m.month,
-        upper: factAbove ? m.fact : m.ks,
-        lower: factAbove ? m.ks : m.fact,
-        fill: factAbove ? 'rgba(255, 122, 69, 0.18)' : 'rgba(82, 196, 26, 0.18)',
+        value: delta,
+        deltaColor: delta >= 0 ? 'positive' : 'negative',
       });
     }
 
-    return { lineData, areaSegments };
+    return { lineData, deltaColumns };
   }, [monthData]);
 
   // Tooltip map
   const tooltipMap = useMemo(() => {
-    const map = new Map<string, IMonthData>();
-    for (const m of monthData) map.set(m.month, m);
+    const map = new Map<string, { fact: number; ks: number; monthFact: number; monthKs: number; delta: number }>();
+    for (const m of monthData) {
+      const monthFact = m.fact - m.prevFact;
+      const monthKs = m.ks - m.prevKs;
+      map.set(m.month, {
+        fact: m.fact,
+        ks: m.ks,
+        monthFact,
+        monthKs,
+        delta: monthFact - monthKs,
+      });
+    }
     return map;
   }, [monthData]);
-
-  // Группируем area-сегменты по цвету для отдельных слоёв
-  const areaGroups = useMemo(() => {
-    const groups: Array<{ fill: string; data: Array<{ month: string; upper: number; lower: number }> }> = [];
-    for (const seg of areaSegments) {
-      const last = groups[groups.length - 1];
-      if (last && last.fill === seg.fill) {
-        last.data.push({ month: seg.month, upper: seg.upper, lower: seg.lower });
-      } else {
-        if (last) {
-          last.data.push({ month: seg.month, upper: seg.upper, lower: seg.lower });
-        }
-        groups.push({ fill: seg.fill, data: [{ month: seg.month, upper: seg.upper, lower: seg.lower }] });
-      }
-    }
-    return groups;
-  }, [areaSegments]);
 
   const config = {
     xField: 'month',
@@ -137,72 +151,95 @@ export const BdrExecutionVsKsChart: FC<IProps> = ({ data }) => {
           if (!info) return '';
           const nzp = info.fact - info.ks;
           const nzpColor = nzp > 0 ? '#ff7a45' : '#52c41a';
+          const deltaColor = info.delta >= 0 ? '#ff7a45' : '#52c41a';
           return `<div style="padding:4px 0;font-size:13px;line-height:1.6">
             <div style="font-weight:600;margin-bottom:4px">${monthKey}</div>
-            <div>Выполнение: <b>${formatMln(info.fact)} млн руб.</b></div>
-            <div>КС-2: <b>${formatMln(info.ks)} млн руб.</b></div>
-            <div>НЗП: <span style="color:${nzpColor};font-weight:600">${nzp >= 0 ? '+' : ''}${formatMln(nzp)} млн руб.</span></div>
+            <div>Выполнение (нараст.): <b>${formatMln(info.fact)} млн</b></div>
+            <div>КС-2 (нараст.): <b>${formatMln(info.ks)} млн</b></div>
+            <div>НЗП (накопл.): <span style="color:${nzpColor};font-weight:600">${nzp >= 0 ? '+' : ''}${formatMln(nzp)} млн</span></div>
+            <div style="border-top:1px solid #f0f0f0;margin-top:4px;padding-top:4px">
+              Дельта за месяц: <span style="color:${deltaColor};font-weight:600">${info.delta >= 0 ? '+' : ''}${formatMln(info.delta)} млн</span>
+            </div>
           </div>`;
         },
       },
     },
     children: [
-      // Заливка между линиями (ribbon)
-      ...areaGroups.map((g, i) => ({
-        data: g.data,
-        type: 'area' as const,
-        yField: 'upper',
-        y1Field: 'lower',
-        style: {
-          fill: g.fill,
-          stroke: 'transparent',
+      // Столбцы месячной дельты (правая ось)
+      {
+        data: deltaColumns,
+        type: 'interval' as const,
+        yField: 'value',
+        colorField: 'deltaColor',
+        scale: {
+          color: {
+            domain: ['positive', 'negative'],
+            range: ['#ff7a45', '#52c41a'],
+          },
         },
-        scale: { y: { key: 'val' } },
-        axis: false,
+        style: {
+          fillOpacity: 0.55,
+          maxWidth: 24,
+        },
+        axis: {
+          x: {
+            title: false,
+            labelAutoRotate: false,
+            labelAutoHide: true,
+            labelAutoEllipsis: true,
+          },
+          y: {
+            position: 'right' as const,
+            title: 'Дельта за месяц (млн)',
+            titleFontSize: 11,
+            labelFormatter: axisFormatter,
+          },
+        },
         legend: false,
-        tooltip: false,
-        key: `area-${i}`,
-      })),
-      // Линии
+        tooltip: {
+          items: [
+            (d: Record<string, number>) => ({
+              name: 'Дельта',
+              value: formatMln(d.value) + ' млн',
+              color: d.value >= 0 ? '#ff7a45' : '#52c41a',
+            }),
+          ],
+        },
+      },
+      // Линии (нарастающий итог, левая ось)
       {
         data: lineData,
         type: 'line' as const,
         yField: 'value',
         colorField: 'type',
         scale: {
-          y: { key: 'val' },
           color: {
             domain: ['Выполнение', 'Актирование (КС-2)'],
             range: ['#ff7a45', '#1890ff'],
           },
         },
-        style: { lineWidth: 2.5 },
+        style: { lineWidth: 3 },
         axis: {
-          x: {
-            title: false,
-            labelAutoRotate: true,
-          },
           y: {
-            title: 'Сумма (млн руб.)',
+            title: 'Сумма нараст. (млн руб.)',
             titleFontSize: 11,
-            labelFormatter: (v: number) => {
-              const mln = v / 1_000_000;
-              return mln % 1 === 0 ? mln.toFixed(0) : mln.toFixed(1);
-            },
+            labelFormatter: axisFormatter,
           },
         },
-        legend: { position: 'bottom' as const },
+        legend: false,
         tooltip: {
           items: [
             {
               channel: 'y',
-              valueFormatter: (v: number) => formatMln(v) + ' млн руб.',
+              valueFormatter: (v: number) => formatMln(v) + ' млн',
             },
           ],
         },
       },
     ],
   };
+
+  const nzpColor = kpi.nzp > 0 ? '#ff7a45' : '#52c41a';
 
   const title = (
     <span>
@@ -212,8 +249,6 @@ export const BdrExecutionVsKsChart: FC<IProps> = ({ data }) => {
       </Tooltip>
     </span>
   );
-
-  const nzpColor = kpi.nzp > 0 ? '#ff7a45' : '#52c41a';
 
   return (
     <div ref={chartRef}>
@@ -245,6 +280,19 @@ export const BdrExecutionVsKsChart: FC<IProps> = ({ data }) => {
             />
           </Col>
         </Row>
+        {/* Легенда */}
+        <div style={{ display: 'flex', gap: 14, marginBottom: 8, flexWrap: 'wrap' }}>
+          {LEGEND_ITEMS.map((item) => (
+            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+              {item.isLine ? (
+                <span style={{ width: 16, height: 3, background: item.color, display: 'inline-block', borderRadius: 1 }} />
+              ) : (
+                <span style={{ width: 12, height: 10, background: item.color, opacity: 0.6, display: 'inline-block', borderRadius: 2 }} />
+              )}
+              <span style={{ color: '#595959' }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
         <DualAxes {...config} height={340} />
       </Card>
     </div>
