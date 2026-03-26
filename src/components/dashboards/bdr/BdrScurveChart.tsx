@@ -12,20 +12,18 @@ interface IProps {
   data: IBdrDashboardData;
 }
 
-const HELP_TEXT = `На графике три линии: План (базовый график), Факт (реальное выполнение) и Прогноз (экстраполяция тренда).
+const HELP_TEXT = `На графике три линии: План (контрактный график), Факт (реальное выполнение) и Прогноз (экстраполяция тренда).
 
-1. Анализ «Коридора» (отставание или опережение)
-• Факт ниже Плана: Классическое отставание. Чем шире разрыв, тем больше объём работ, который нужно «нагонять».
-• Факт выше Плана: Опережение графика.
+1. Анализ «Коридора»
+• Факт ниже Плана — отставание. Чем шире разрыв, тем больше объём для нагона.
+• Факт выше Плана — опережение графика.
 
-2. Анализ Угла Наклона (темп)
-• Крутой наклон факта: Высокая скорость.
-• Пологий наклон (плато): Стройка «встала».
-
-3. Прогнозная линия
-Пунктирная линия «Прогноз» экстраполирует текущий тренд факта до конца проекта. Если прогноз ниже плана — ожидается отставание по срокам.`;
+2. Прогнозная линия
+Зелёный пунктир экстраполирует текущий темп до 100% бюджета. Форма повторяет S-кривую оставшегося плана. Если прогноз уходит правее «Плановое завершение» — ожидается задержка.`;
 
 const TREND_WINDOW = 3;
+const MAX_FORECAST_MONTHS = 36;
+const MONTH_SHORTS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 
 const formatMln = (v: number): string => {
   const mln = v / 1_000_000;
@@ -34,6 +32,37 @@ const formatMln = (v: number): string => {
 
 const formatRub = (v: number): string =>
   v.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽';
+
+const generateNextMonths = (lastLabel: string, count: number): string[] => {
+  const parts = lastLabel.split(' ');
+  const isMulti = parts.length === 2;
+  let m = MONTH_SHORTS.indexOf(parts[0]);
+  let y = isMulti ? parseInt(parts[1]) : 0;
+  const result: string[] = [];
+  for (let i = 0; i < count; i++) {
+    m++;
+    if (m >= 12) { m = 0; y++; }
+    result.push(isMulti ? `${MONTH_SHORTS[m]} ${y}` : MONTH_SHORTS[m]);
+  }
+  return result;
+};
+
+/** Линейная интерполяция массива source в targetLen точек */
+const resampleWeights = (source: number[], targetLen: number): number[] => {
+  if (targetLen <= 0) return [];
+  if (source.length === 0) return new Array(targetLen).fill(1);
+  if (source.length === 1) return new Array(targetLen).fill(source[0]);
+  if (source.length === targetLen) return [...source];
+  const result: number[] = [];
+  for (let i = 0; i < targetLen; i++) {
+    const pos = targetLen === 1 ? 0 : (i / (targetLen - 1)) * (source.length - 1);
+    const lo = Math.floor(pos);
+    const hi = Math.min(lo + 1, source.length - 1);
+    const frac = pos - lo;
+    result.push(source[lo] * (1 - frac) + source[hi] * frac);
+  }
+  return result;
+};
 
 export const BdrScurveChart: FC<IProps> = ({ data }) => {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -71,40 +100,86 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     }
     const currentMonth = months[currentIdx];
 
-    // Средний месячный факт за последние N месяцев (для прогноза)
+    // Последний месяц с ненулевым планом
+    let lastPlanIdx = 0;
+    for (let i = months.length - 1; i >= 0; i--) {
+      if ((planMap.get(months[i]) ?? 0) > 0) { lastPlanIdx = i; break; }
+    }
+    const lastPlanMonth = months[lastPlanIdx];
+
+    // Средняя скорость за последние N месяцев
     const recentStart = Math.max(0, currentIdx - TREND_WINDOW + 1);
     const recentFacts = months.slice(recentStart, currentIdx + 1).map(m => factMap.get(m) ?? 0);
-    const avgMonthly = recentFacts.length > 0
+    const avgSpeed = recentFacts.length > 0
       ? recentFacts.reduce((a, b) => a + b, 0) / recentFacts.length : 0;
 
-    // --- Помесячные данные ---
-    const monthlyPlanLine = months.map(m => ({ month: m, value: planMap.get(m) ?? 0, type: 'План' }));
+    // Итоговый план и остаток
+    const totalPlan = Math.max(...Array.from(cumPlanMap.values()), 0);
+    const lastCumFact = cumFactMap.get(currentMonth) ?? 0;
+    const remaining = Math.max(0, totalPlan - lastCumFact);
+
+    // Количество месяцев прогноза (с потолком)
+    const forecastMonthsCount = avgSpeed > 0 && remaining > 0
+      ? Math.min(Math.ceil(remaining / avgSpeed), MAX_FORECAST_MONTHS) : 0;
+
+    // Дополнительные месяцы если прогноз выходит за данные
+    const monthsAfterCurrent = months.length - currentIdx - 1;
+    const extraNeeded = Math.max(0, forecastMonthsCount - monthsAfterCurrent);
+    const extraLabels = extraNeeded > 0
+      ? generateNextMonths(months[months.length - 1], extraNeeded) : [];
+    const allMonths = [...months, ...extraLabels];
+
+    // Веса из оставшегося плана для S-образной формы
+    const planWeightsRaw: number[] = [];
+    for (let i = currentIdx + 1; i <= lastPlanIdx; i++) {
+      planWeightsRaw.push(planMap.get(months[i]) ?? 0);
+    }
+    const planWeights = planWeightsRaw.length > 0 && planWeightsRaw.some(w => w > 0)
+      ? planWeightsRaw : [1];
+
+    const resampled = forecastMonthsCount > 0
+      ? resampleWeights(planWeights, forecastMonthsCount) : [];
+    const weightSum = resampled.reduce((a, b) => a + b, 0);
+    const scaledWeights = weightSum > 0
+      ? resampled.map(w => (w / weightSum) * remaining) : [];
+
+    // --- План (обрезан по lastPlanIdx) ---
+    const monthlyPlanLine = months.slice(0, lastPlanIdx + 1)
+      .map(m => ({ month: m, value: planMap.get(m) ?? 0, type: 'План' }));
+    const cumPlanLine = months.slice(0, lastPlanIdx + 1)
+      .map(m => ({ month: m, value: cumPlanMap.get(m) ?? 0, type: 'План' }));
+
+    // --- Факт (обрезан по currentIdx) ---
     const monthlyFactLine = months.slice(0, currentIdx + 1)
       .map(m => ({ month: m, value: factMap.get(m) ?? 0, type: 'Факт' }));
-
-    const monthlyForecastLine: IMonthDataPoint[] = [
-      { month: currentMonth, value: factMap.get(currentMonth) ?? 0, type: 'Прогноз' },
-    ];
-    for (let i = currentIdx + 1; i < months.length; i++) {
-      monthlyForecastLine.push({ month: months[i], value: avgMonthly, type: 'Прогноз' });
-    }
-
-    // --- Кумулятивные данные ---
-    const cumPlanLine = months.map(m => ({ month: m, value: cumPlanMap.get(m) ?? 0, type: 'План' }));
     const cumFactLine = months.slice(0, currentIdx + 1)
       .map(m => ({ month: m, value: cumFactMap.get(m) ?? 0, type: 'Факт' }));
 
-    const lastCumFact = cumFactMap.get(currentMonth) ?? 0;
-    const cumForecastLine: IMonthDataPoint[] = [
-      { month: currentMonth, value: lastCumFact, type: 'Прогноз' },
-    ];
-    let cumVal = lastCumFact;
-    for (let i = currentIdx + 1; i < months.length; i++) {
-      cumVal += avgMonthly;
-      cumForecastLine.push({ month: months[i], value: cumVal, type: 'Прогноз' });
+    // --- Прогноз (S-образный, от факта к totalPlan) ---
+    const monthlyForecastLine: IMonthDataPoint[] = [];
+    const cumForecastLine: IMonthDataPoint[] = [];
+
+    if (forecastMonthsCount > 0) {
+      // Стартовая точка — стыковка с фактом
+      monthlyForecastLine.push({
+        month: currentMonth, value: factMap.get(currentMonth) ?? 0, type: 'Прогноз',
+      });
+      cumForecastLine.push({ month: currentMonth, value: lastCumFact, type: 'Прогноз' });
+
+      let cumVal = lastCumFact;
+      for (let i = 0; i < forecastMonthsCount; i++) {
+        const mLabel = allMonths[currentIdx + 1 + i];
+        const mVal = scaledWeights[i];
+        cumVal = Math.min(cumVal + mVal, totalPlan);
+        monthlyForecastLine.push({ month: mLabel, value: mVal, type: 'Прогноз' });
+        cumForecastLine.push({ month: mLabel, value: cumVal, type: 'Прогноз' });
+      }
     }
 
-    // --- Области отклонений (только до текущего месяца) ---
+    const forecastEndMonth = forecastMonthsCount > 0
+      ? allMonths[currentIdx + forecastMonthsCount] : null;
+
+    // --- Области отклонений (до текущего месяца) ---
     const active = months.slice(0, currentIdx + 1);
 
     const monthlyRedArea = active.map(m => {
@@ -117,7 +192,6 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
       const fact = factMap.get(m) ?? 0;
       return { month: m, upper: fact, lower: Math.min(plan, fact) };
     });
-
     const cumRedArea = active.map(m => {
       const cp = cumPlanMap.get(m) ?? 0;
       const cf = cumFactMap.get(m) ?? 0;
@@ -129,19 +203,19 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
       return { month: m, upper: cf, lower: Math.min(cp, cf) };
     });
 
-    // KPI на текущую дату
+    // KPI
     const planAtCurrent = cumPlanMap.get(currentMonth) ?? 0;
-    const factAtCurrent = cumFactMap.get(currentMonth) ?? 0;
-    const delta = factAtCurrent - planAtCurrent;
+    const delta = lastCumFact - planAtCurrent;
     const deltaPct = planAtCurrent ? (delta / planAtCurrent) * 100 : 0;
 
     return {
-      months, currentMonth, currentIdx,
+      allMonths, months, currentMonth, currentIdx,
+      lastPlanMonth, forecastEndMonth, totalPlan,
       monthlyPlanLine, monthlyFactLine, monthlyForecastLine,
       cumPlanLine, cumFactLine, cumForecastLine,
       monthlyRedArea, monthlyGreenArea,
       cumRedArea, cumGreenArea,
-      kpi: { planAtCurrent, factAtCurrent, delta, deltaPct },
+      kpi: { planAtCurrent, factAtCurrent: lastCumFact, delta, deltaPct },
     };
   }, [revenueByMonth, scurve]);
 
@@ -155,7 +229,7 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     legend: false,
   };
 
-  const totalMonths = chartData.months.length;
+  const totalMonths = chartData.allMonths.length;
   const tickStep = totalMonths <= 12 ? 1 : totalMonths <= 24 ? 2 : 3;
 
   const axisConfig = {
@@ -171,23 +245,23 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     },
   };
 
-  const buildLineChild = (lineData: IMonthDataPoint[], types: string[], colors: string[]) => ({
+  const buildLineChild = (
+    lineData: IMonthDataPoint[], types: string[], colors: string[],
+  ) => ({
     type: 'line' as const,
     data: lineData,
     xField: 'month',
     yField: 'value',
     colorField: 'type',
     scale: {
+      x: { domain: chartData.allMonths },
       y: { key: 'yShared', independent: false },
       color: { domain: types, range: colors },
     },
     axis: axisConfig,
     style: { lineWidth: 3 },
     tooltip: {
-      items: [{
-        channel: 'y',
-        valueFormatter: formatRub,
-      }],
+      items: [{ channel: 'y' as const, valueFormatter: formatRub }],
     },
   });
 
@@ -199,113 +273,81 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     colorField: 'type',
     scale: {
       y: { key: 'yShared', independent: false },
-      color: { domain: ['Прогноз'], range: ['#faad14'] },
+      color: { domain: ['Прогноз'], range: ['#52c41a'] },
     },
     style: { lineWidth: 2, lineDash: [6, 4] },
     axis: false,
     legend: false,
     tooltip: {
-      items: [{
-        channel: 'y',
-        valueFormatter: formatRub,
-      }],
+      items: [{ channel: 'y' as const, valueFormatter: formatRub }],
     },
   });
 
-  const buildTodayLine = () => ({
+  const buildMarkerLine = (month: string, label: string, color: string) => ({
     type: 'lineX' as const,
-    data: [chartData.currentMonth],
-    style: { stroke: '#8c8c8c', lineDash: [4, 4], lineWidth: 1 },
+    data: [month],
+    style: { stroke: color, lineDash: [4, 4], lineWidth: 1 },
     axis: false,
     legend: false,
     tooltip: false,
     labels: [{
-      text: 'Сегодня',
-      position: 'top',
+      text: label,
+      position: 'top' as const,
       dy: -4,
-      style: { fontSize: 10, fill: '#8c8c8c' },
+      style: { fontSize: 10, fill: color },
     }],
   });
 
-  const monthlyConfig = {
-    children: [
-      { type: 'area' as const, data: chartData.monthlyRedArea, ...areaBase,
-        style: { fill: '#ff4d4f', fillOpacity: 0.2, stroke: 'transparent' } },
-      { type: 'area' as const, data: chartData.monthlyGreenArea, ...areaBase,
-        style: { fill: '#52c41a', fillOpacity: 0.2, stroke: 'transparent' } },
-      buildForecastChild(chartData.monthlyForecastLine),
-      buildTodayLine(),
-      buildLineChild(
-        [...chartData.monthlyPlanLine, ...chartData.monthlyFactLine],
-        ['План', 'Факт'], ['#1890ff', '#52c41a'],
-      ),
-    ],
-    interaction: {
-      tooltip: {
-        shared: true,
-        render: (_: unknown, { items }: { items: Array<{ name: string; value: string; color: string }> }) => {
-          const plan = items.find(i => i.name === 'План');
-          const fact = items.find(i => i.name === 'Факт');
-          const forecast = items.find(i => i.name === 'Прогноз');
-          let html = '<div style="padding:4px 8px;font-size:12px">';
-          if (plan) html += `<div style="color:${plan.color}">План: ${plan.value}</div>`;
-          if (fact) html += `<div style="color:${fact.color}">Факт: ${fact.value}</div>`;
-          if (forecast) html += `<div style="color:${forecast.color}">Прогноз: ${forecast.value}</div>`;
-          if (plan && fact) {
-            const pv = parseFloat(plan.value.replace(/\s/g, '').replace('₽', ''));
-            const fv = parseFloat(fact.value.replace(/\s/g, '').replace('₽', ''));
-            const d = fv - pv;
-            const color = d >= 0 ? '#52c41a' : '#ff4d4f';
-            const sign = d >= 0 ? '+' : '';
-            html += `<div style="color:${color};font-weight:600">Δ: ${sign}${formatRub(d)}</div>`;
-          }
-          html += '</div>';
-          return html;
-        },
-      },
-    },
+  const tooltipRender = (_: unknown, { items }: { items: Array<{ name: string; value: string; color: string }> }) => {
+    const plan = items.find(i => i.name === 'План');
+    const fact = items.find(i => i.name === 'Факт');
+    const forecast = items.find(i => i.name === 'Прогноз');
+    let html = '<div style="padding:4px 8px;font-size:12px">';
+    if (plan) html += `<div style="color:${plan.color}">План: ${plan.value}</div>`;
+    if (fact) html += `<div style="color:${fact.color}">Факт: ${fact.value}</div>`;
+    if (forecast) html += `<div style="color:${forecast.color}">Прогноз: ${forecast.value}</div>`;
+    if (plan && fact) {
+      const pv = parseFloat(plan.value.replace(/\s/g, '').replace('₽', ''));
+      const fv = parseFloat(fact.value.replace(/\s/g, '').replace('₽', ''));
+      const d = fv - pv;
+      const color = d >= 0 ? '#52c41a' : '#ff4d4f';
+      const sign = d >= 0 ? '+' : '';
+      html += `<div style="color:${color};font-weight:600">Δ: ${sign}${formatRub(d)}</div>`;
+    }
+    html += '</div>';
+    return html;
   };
 
-  const cumulativeConfig = {
+  const buildConfig = (
+    planLine: IMonthDataPoint[],
+    factLine: IMonthDataPoint[],
+    forecastLine: IMonthDataPoint[],
+    redArea: Array<{ month: string; upper: number; lower: number }>,
+    greenArea: Array<{ month: string; upper: number; lower: number }>,
+  ) => ({
     children: [
-      { type: 'area' as const, data: chartData.cumRedArea, ...areaBase,
+      { type: 'area' as const, data: redArea, ...areaBase,
         style: { fill: '#ff4d4f', fillOpacity: 0.2, stroke: 'transparent' } },
-      { type: 'area' as const, data: chartData.cumGreenArea, ...areaBase,
+      { type: 'area' as const, data: greenArea, ...areaBase,
         style: { fill: '#52c41a', fillOpacity: 0.2, stroke: 'transparent' } },
-      buildForecastChild(chartData.cumForecastLine),
-      buildTodayLine(),
-      buildLineChild(
-        [...chartData.cumPlanLine, ...chartData.cumFactLine],
-        ['План', 'Факт'], ['#1890ff', '#52c41a'],
-      ),
+      buildForecastChild(forecastLine),
+      buildMarkerLine(chartData.currentMonth, 'Сегодня', '#8c8c8c'),
+      buildMarkerLine(chartData.lastPlanMonth, 'Плановое завершение', '#1890ff'),
+      buildLineChild([...planLine, ...factLine], ['План', 'Факт'], ['#1890ff', '#52c41a']),
     ],
-    interaction: {
-      tooltip: {
-        shared: true,
-        render: (_: unknown, { items }: { items: Array<{ name: string; value: string; color: string }> }) => {
-          const plan = items.find(i => i.name === 'План');
-          const fact = items.find(i => i.name === 'Факт');
-          const forecast = items.find(i => i.name === 'Прогноз');
-          let html = '<div style="padding:4px 8px;font-size:12px">';
-          if (plan) html += `<div style="color:${plan.color}">План: ${plan.value}</div>`;
-          if (fact) html += `<div style="color:${fact.color}">Факт: ${fact.value}</div>`;
-          if (forecast) html += `<div style="color:${forecast.color}">Прогноз: ${forecast.value}</div>`;
-          if (plan && fact) {
-            const pv = parseFloat(plan.value.replace(/\s/g, '').replace('₽', ''));
-            const fv = parseFloat(fact.value.replace(/\s/g, '').replace('₽', ''));
-            const d = fv - pv;
-            const color = d >= 0 ? '#52c41a' : '#ff4d4f';
-            const sign = d >= 0 ? '+' : '';
-            html += `<div style="color:${color};font-weight:600">Δ: ${sign}${formatRub(d)}</div>`;
-          }
-          html += '</div>';
-          return html;
-        },
-      },
-    },
-  };
+    interaction: { tooltip: { shared: true, render: tooltipRender } },
+  });
 
-  const { kpi } = chartData;
+  const monthlyConfig = buildConfig(
+    chartData.monthlyPlanLine, chartData.monthlyFactLine, chartData.monthlyForecastLine,
+    chartData.monthlyRedArea, chartData.monthlyGreenArea,
+  );
+  const cumulativeConfig = buildConfig(
+    chartData.cumPlanLine, chartData.cumFactLine, chartData.cumForecastLine,
+    chartData.cumRedArea, chartData.cumGreenArea,
+  );
+
+  const { kpi, forecastEndMonth } = chartData;
   const deltaColor = kpi.delta >= 0 ? '#52c41a' : '#ff4d4f';
   const deltaSign = kpi.delta >= 0 ? '+' : '';
 
@@ -352,6 +394,16 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
               {deltaSign}{formatMln(kpi.delta)} млн ({deltaSign}{kpi.deltaPct.toFixed(1)}%)
             </span>
           </div>
+          {forecastEndMonth && (
+            <div className="scurve-kpi-item">
+              <span className="scurve-kpi-label">Прогноз завершения</span>
+              <span className="scurve-kpi-value" style={{
+                color: forecastEndMonth !== chartData.lastPlanMonth ? '#ff4d4f' : '#52c41a',
+              }}>
+                {forecastEndMonth}
+              </span>
+            </div>
+          )}
         </div>
         {mode === 'monthly' ? (
           <Mix {...monthlyConfig} height={320} />
