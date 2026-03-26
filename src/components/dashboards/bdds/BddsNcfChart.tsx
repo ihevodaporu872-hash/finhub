@@ -40,6 +40,8 @@ const LEGEND_ITEMS = [
 export const BddsNcfChart: FC<IProps> = ({ data }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
+  if (!data.ncfBySection || data.ncfBySection.length === 0) return null;
+
   // Обрезаем пустые будущие периоды и строим данные
   const { stackData, lineData, months } = useMemo(() => {
     const raw = data.ncfBySection;
@@ -67,14 +69,17 @@ export const BddsNcfChart: FC<IProps> = ({ data }) => {
 
     const months = lastFactIdx >= 0 ? monthOrder.slice(0, lastFactIdx + 1) : monthOrder;
 
+    const SECTIONS = ['Основная деятельность', 'Инвестиционная деятельность', 'Финансовая деятельность'];
     const stackData: Array<{ month: string; value: number; type: string }> = [];
     const lineData: Array<{ month: string; value: number; type: string }> = [];
 
     for (const m of months) {
       const entry = monthMap.get(m)!;
       let total = 0;
-      for (const [type, value] of Object.entries(entry)) {
-        stackData.push({ month: m, value, type });
+      // Гарантируем все три секции в каждом месяце для корректного стека
+      for (const section of SECTIONS) {
+        const value = entry[section] ?? 0;
+        stackData.push({ month: m, value, type: section });
         total += value;
       }
       lineData.push({ month: m, value: total, type: 'Итоговый ЧДП' });
@@ -129,6 +134,7 @@ export const BddsNcfChart: FC<IProps> = ({ data }) => {
         stack: true,
         scale: {
           x: { domain: months },
+          y: { key: 'shared' },
           color: {
             domain: ['Основная деятельность', 'Инвестиционная деятельность', 'Финансовая деятельность'],
             range: ['#1890ff', '#52c41a', '#fa8c16'],
@@ -169,6 +175,7 @@ export const BddsNcfChart: FC<IProps> = ({ data }) => {
         colorField: 'type',
         scale: {
           x: { domain: months },
+          y: { key: 'shared' },
           color: {
             domain: ['Итоговый ЧДП'],
             range: ['#262626'],
