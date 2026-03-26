@@ -224,12 +224,12 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
         style: { fill: '#ff4d4f', fillOpacity: 0.2, stroke: 'transparent' } },
       { type: 'area' as const, data: chartData.monthlyGreenArea, ...areaBase,
         style: { fill: '#52c41a', fillOpacity: 0.2, stroke: 'transparent' } },
+      buildForecastChild(chartData.monthlyForecastLine),
+      buildTodayLine(),
       buildLineChild(
         [...chartData.monthlyPlanLine, ...chartData.monthlyFactLine],
         ['План', 'Факт'], ['#1890ff', '#52c41a'],
       ),
-      buildForecastChild(chartData.monthlyForecastLine),
-      buildTodayLine(),
     ],
     interaction: {
       tooltip: {
@@ -263,12 +263,12 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
         style: { fill: '#ff4d4f', fillOpacity: 0.2, stroke: 'transparent' } },
       { type: 'area' as const, data: chartData.cumGreenArea, ...areaBase,
         style: { fill: '#52c41a', fillOpacity: 0.2, stroke: 'transparent' } },
+      buildForecastChild(chartData.cumForecastLine),
+      buildTodayLine(),
       buildLineChild(
         [...chartData.cumPlanLine, ...chartData.cumFactLine],
         ['План', 'Факт'], ['#1890ff', '#52c41a'],
       ),
-      buildForecastChild(chartData.cumForecastLine),
-      buildTodayLine(),
     ],
     interaction: {
       tooltip: {
