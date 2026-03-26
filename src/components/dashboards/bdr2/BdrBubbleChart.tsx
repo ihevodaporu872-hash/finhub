@@ -38,23 +38,54 @@ export const BdrBubbleChart: FC<IProps> = ({ data }) => {
     };
   }, [data]);
 
+  // Вычисляем расширенные домены с отступами для осей
+  const { xDomain, yDomain } = useMemo(() => {
+    if (!data.length) return { xDomain: [0, 100] as [number, number], yDomain: [-10, 110] as [number, number] };
+
+    let xMin = Infinity, xMax = -Infinity;
+    let yMin = Infinity, yMax = -Infinity;
+
+    for (const d of data) {
+      if (d.revenue < xMin) xMin = d.revenue;
+      if (d.revenue > xMax) xMax = d.revenue;
+      if (d.profitability < yMin) yMin = d.profitability;
+      if (d.profitability > yMax) yMax = d.profitability;
+    }
+
+    // Добавляем 20% padding чтобы крайние пузырьки не обрезались
+    const xPad = (xMax - xMin) * 0.2 || xMax * 0.2;
+    const yPad = (yMax - yMin) * 0.2 || 10;
+
+    return {
+      xDomain: [Math.max(0, xMin - xPad), xMax + xPad] as [number, number],
+      yDomain: [Math.min(yMin - yPad, -5), yMax + yPad] as [number, number],
+    };
+  }, [data]);
+
   const config = {
     data,
     xField: 'revenue',
     yField: 'profitability',
     sizeField: 'grossProfit',
-    size: { range: [12, 60] },
     shapeField: 'point',
     style: {
       fill: '#1890ff',
-      fillOpacity: 0.6,
-      stroke: '#1890ff',
-      strokeOpacity: 0.8,
-      lineWidth: 1,
+      fillOpacity: 0.5,
+      stroke: '#096dd9',
+      strokeOpacity: 0.85,
+      lineWidth: 1.5,
     },
     scale: {
+      x: {
+        domainMin: xDomain[0],
+        domainMax: xDomain[1],
+      },
+      y: {
+        domainMin: yDomain[0],
+        domainMax: yDomain[1],
+      },
       size: {
-        range: [12, 60],
+        range: [8, 32],
       },
     },
     axis: {
@@ -74,7 +105,6 @@ export const BdrBubbleChart: FC<IProps> = ({ data }) => {
     },
     // Reference lines — средняя выручка и средняя рентабельность
     annotations: [
-      // Вертикальная линия — средняя выручка
       {
         type: 'lineX' as const,
         xField: avgRevenue,
@@ -85,7 +115,6 @@ export const BdrBubbleChart: FC<IProps> = ({ data }) => {
           lineWidth: 1,
         },
       },
-      // Горизонтальная линия — средняя рентабельность
       {
         type: 'lineY' as const,
         yField: avgProfitability,
@@ -118,13 +147,18 @@ export const BdrBubbleChart: FC<IProps> = ({ data }) => {
       position: 'top' as const,
       style: {
         fontSize: 10,
-        fill: '#595959',
-        dy: -8,
+        fontWeight: 500,
+        fill: '#262626',
+        dy: -6,
+        stroke: '#ffffff',
+        strokeWidth: 3,
+        paintOrder: 'stroke',
       },
       layout: [
         { type: 'overlapDodgeY' as const },
       ],
     },
+    padding: 'auto' as const,
   };
 
   const title = (
