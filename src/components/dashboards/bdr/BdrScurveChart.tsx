@@ -283,7 +283,7 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     },
   });
 
-  const buildMarkerLine = (month: string, label: string, color: string) => ({
+  const buildMarkerLine = (month: string, label: string, color: string, offsetY = -4) => ({
     type: 'lineX' as const,
     data: [month],
     style: { stroke: color, lineDash: [4, 4], lineWidth: 1 },
@@ -293,7 +293,7 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
     labels: [{
       text: label,
       position: 'top' as const,
-      dy: -4,
+      dy: offsetY,
       style: { fontSize: 10, fill: color },
     }],
   });
@@ -332,7 +332,10 @@ export const BdrScurveChart: FC<IProps> = ({ data }) => {
         style: { fill: '#52c41a', fillOpacity: 0.2, stroke: 'transparent' } },
       buildForecastChild(forecastLine),
       buildMarkerLine(chartData.currentMonth, 'Сегодня', '#8c8c8c'),
-      buildMarkerLine(chartData.lastPlanMonth, 'Плановое завершение', '#1890ff'),
+      buildMarkerLine(chartData.lastPlanMonth, 'Плановое завершение', '#1890ff', -18),
+      ...(chartData.forecastEndMonth
+        ? [buildMarkerLine(chartData.forecastEndMonth, 'Прогнозное завершение', '#52c41a')]
+        : []),
       buildLineChild([...planLine, ...factLine], ['План', 'Факт'], ['#1890ff', '#52c41a']),
     ],
     interaction: { tooltip: { shared: true, render: tooltipRender } },
