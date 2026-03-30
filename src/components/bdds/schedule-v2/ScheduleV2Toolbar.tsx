@@ -1,11 +1,9 @@
-import { Tag, Space } from 'antd';
+import { Space, Segmented } from 'antd';
 import { YearSelect } from '../../common/YearSelect';
-import type { Project } from '../../../types/projects';
 
 interface IProps {
-  projects: Project[];
-  selectedProjectId: string | null;
-  onProjectChange: (projectId: string | null, project: Project | null) => void;
+  costGroup: 'direct' | 'commercial';
+  onCostGroupChange: (group: 'direct' | 'commercial') => void;
   yearFrom: number;
   yearTo: number;
   onYearFromChange: (year: number) => void;
@@ -13,9 +11,8 @@ interface IProps {
 }
 
 export const ScheduleV2Toolbar = ({
-  projects,
-  selectedProjectId,
-  onProjectChange,
+  costGroup,
+  onCostGroupChange,
   yearFrom,
   yearTo,
   onYearFromChange,
@@ -23,31 +20,21 @@ export const ScheduleV2Toolbar = ({
 }: IProps) => {
   return (
     <div className="bdds-income-toolbar">
-      <Space wrap size="small">
+      <Space wrap size="middle">
+        <span>Тип затрат:</span>
+        <Segmented
+          value={costGroup}
+          onChange={(val) => onCostGroupChange(val as 'direct' | 'commercial')}
+          options={[
+            { label: 'Прямые затраты', value: 'direct' },
+            { label: 'Коммерческие затраты', value: 'commercial' },
+          ]}
+        />
         <span>Год с</span>
         <YearSelect value={yearFrom} onChange={onYearFromChange} />
         <span>Год по</span>
         <YearSelect value={yearTo} onChange={onYearToChange} />
       </Space>
-      <div className="bdds-income-projects">
-        <Tag
-          color={!selectedProjectId ? 'blue' : undefined}
-          onClick={() => onProjectChange(null, null)}
-          className="bdds-income-project-tag"
-        >
-          Все проекты
-        </Tag>
-        {projects.map((p) => (
-          <Tag
-            key={p.id}
-            color={selectedProjectId === p.id ? 'blue' : undefined}
-            onClick={() => onProjectChange(p.id, p)}
-            className="bdds-income-project-tag"
-          >
-            {p.name}
-          </Tag>
-        ))}
-      </div>
     </div>
   );
 };

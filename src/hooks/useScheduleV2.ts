@@ -9,64 +9,63 @@ import type {
   ScheduleV2FinanceCode,
 } from '../types/scheduleV2';
 import { FINANCE_CODES, FINANCE_ROW_LABELS, EDITABLE_FINANCE_CODES } from '../types/scheduleV2';
-import { COST_GROUP_LABELS } from '../utils/scheduleV2Categories';
 import * as scheduleV2Service from '../services/scheduleV2Service';
 import * as projectsService from '../services/projectsService';
 
+type CostGroup = 'direct' | 'commercial';
+
 interface IUseScheduleV2Result {
-  projects: Project[];
-  selectedProjectId: string | null;
-  setSelectedProjectId: (id: string | null) => void;
+  projectName: string;
+  costGroup: CostGroup;
+  setCostGroup: (g: CostGroup) => void;
   costRows: IScheduleV2CostRow[];
   monthlyRows: IScheduleV2MonthlyRow[];
   monthKeys: string[];
-  categories: IScheduleV2Category[];
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
 }
 
 export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2Result {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState('');
+  const [costGroup, setCostGroup] = useState<CostGroup>('direct');
   const [categories, setCategories] = useState<IScheduleV2Category[]>([]);
   const [monthlyData, setMonthlyData] = useState<IScheduleV2Monthly[]>([]);
   const [financeData, setFinanceData] = useState<IScheduleV2Finance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Находим проект Событие 6.2 при загрузке
+  useEffect(() => {
+    (async () => {
+      try {
+        const projects = await projectsService.getProjects();
+        const sobytie = projects.find((p: Project) =>
+          p.code === 'SOB-62' || p.name.includes('Событие 6.2')
+        );
+        if (sobytie) {
+          setProjectId(sobytie.id);
+          setProjectName(sobytie.name);
+        } else {
+          setError('Проект «Событие 6.2» не найден. Выполните миграцию 022.');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ошибка загрузки проектов');
+      }
+    })();
+  }, []);
+
   const loadData = useCallback(async () => {
+    if (!projectId) return;
     try {
       setLoading(true);
       setError(null);
-
-      const projectsData = await projectsService.getProjects();
-      const activeProjects = projectsData.filter((p) => p.is_active);
-      setProjects(activeProjects);
-
-      // Автовыбор первого проекта при загрузке
-      if (!selectedProjectId && activeProjects.length > 0) {
-        const sobytie = activeProjects.find((p) =>
-          p.code === 'SOB-62' || p.name.includes('Событие 6.2')
-        );
-        const autoProject = sobytie ?? activeProjects[0];
-        setSelectedProjectId(autoProject.id);
-        return;
-      }
-
-      if (!selectedProjectId) {
-        setCategories([]);
-        setMonthlyData([]);
-        setFinanceData([]);
-        return;
-      }
-
       const [cats, monthly, finance] = await Promise.all([
-        scheduleV2Service.getCategories(selectedProjectId),
-        scheduleV2Service.getMonthlyData(selectedProjectId),
-        scheduleV2Service.getFinanceData(selectedProjectId),
+        scheduleV2Service.getCategories(projectId),
+        scheduleV2Service.getMonthlyData(projectId),
+        scheduleV2Service.getFinanceData(projectId),
       ]);
-
       setCategories(cats);
       setMonthlyData(monthly);
       setFinanceData(finance);
@@ -75,7 +74,7 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     } finally {
       setLoading(false);
     }
-  }, [selectedProjectId]);
+  }, [projectId]);
 
   useEffect(() => {
     loadData();
@@ -96,145 +95,102 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     });
   }, [financeData, yearFrom, yearTo]);
 
+  // Категории текущей группы
+  const groupCategories = useMemo(() => {
+    return categories
+      .filter((c) => c.cost_group === costGroup)
+      .sort((a, b) => a.sort_order - b.sort_order);
+  }, [categories, costGroup]);
+
+  // ID категорий текущей группы для фильтрации monthly
+  const groupCatIds = useMemo(() => {
+    return new Set(groupCategories.map((c) => c.id));
+  }, [groupCategories]);
+
   // Месяцы
   const monthKeys = useMemo(() => {
     const keys = new Set<string>();
-    for (const e of filteredMonthly) keys.add(e.month_key);
+    for (const e of filteredMonthly) {
+      if (groupCatIds.has(e.category_id)) keys.add(e.month_key);
+    }
     for (const e of filteredFinance) keys.add(e.month_key);
     return Array.from(keys).sort();
-  }, [filteredMonthly, filteredFinance]);
+  }, [filteredMonthly, filteredFinance, groupCatIds]);
 
   // Таблица стоимости
   const costRows = useMemo((): IScheduleV2CostRow[] => {
     const result: IScheduleV2CostRow[] = [];
-    const groups: Array<'direct' | 'commercial'> = ['direct', 'commercial'];
 
-    for (const group of groups) {
+    for (const cat of groupCategories) {
       result.push({
-        key: `header_${group}`,
-        name: COST_GROUP_LABELS[group],
-        costGroup: group,
-        isHeader: true,
-        volume: 0,
-        unit: '',
-        pricePerUnit: 0,
-        costMaterials: 0,
-        costLabor: 0,
-        costSubMaterials: 0,
-        costSubLabor: 0,
-        total: 0,
+        key: cat.id,
+        id: cat.id,
+        name: cat.name,
+        costGroup: costGroup,
+        volume: Number(cat.volume),
+        unit: cat.unit,
+        pricePerUnit: Number(cat.price_per_unit),
+        costMaterials: Number(cat.cost_materials),
+        costLabor: Number(cat.cost_labor),
+        costSubMaterials: Number(cat.cost_sub_materials),
+        costSubLabor: Number(cat.cost_sub_labor),
+        total: Number(cat.total),
       });
-
-      const groupCats = categories
-        .filter((c) => c.cost_group === group)
-        .sort((a, b) => a.sort_order - b.sort_order);
-
-      for (const cat of groupCats) {
-        result.push({
-          key: cat.id,
-          id: cat.id,
-          name: cat.name,
-          costGroup: group,
-          volume: Number(cat.volume),
-          unit: cat.unit,
-          pricePerUnit: Number(cat.price_per_unit),
-          costMaterials: Number(cat.cost_materials),
-          costLabor: Number(cat.cost_labor),
-          costSubMaterials: Number(cat.cost_sub_materials),
-          costSubLabor: Number(cat.cost_sub_labor),
-          total: Number(cat.total),
-        });
-      }
-
-      // Итого по группе
-      const totalRow: IScheduleV2CostRow = {
-        key: `total_${group}`,
-        name: `Итого ${COST_GROUP_LABELS[group].toLowerCase()}`,
-        costGroup: group,
-        isTotal: true,
-        volume: 0,
-        unit: '',
-        pricePerUnit: 0,
-        costMaterials: groupCats.reduce((s, c) => s + Number(c.cost_materials), 0),
-        costLabor: groupCats.reduce((s, c) => s + Number(c.cost_labor), 0),
-        costSubMaterials: groupCats.reduce((s, c) => s + Number(c.cost_sub_materials), 0),
-        costSubLabor: groupCats.reduce((s, c) => s + Number(c.cost_sub_labor), 0),
-        total: groupCats.reduce((s, c) => s + Number(c.total), 0),
-      };
-      result.push(totalRow);
     }
 
-    // Общий итог
-    const allCats = categories;
+    // Итого
     result.push({
       key: 'grand_total',
       name: 'Итого',
-      costGroup: 'direct',
+      costGroup: costGroup,
       isTotal: true,
       volume: 0,
       unit: '',
       pricePerUnit: 0,
-      costMaterials: allCats.reduce((s, c) => s + Number(c.cost_materials), 0),
-      costLabor: allCats.reduce((s, c) => s + Number(c.cost_labor), 0),
-      costSubMaterials: allCats.reduce((s, c) => s + Number(c.cost_sub_materials), 0),
-      costSubLabor: allCats.reduce((s, c) => s + Number(c.cost_sub_labor), 0),
-      total: allCats.reduce((s, c) => s + Number(c.total), 0),
+      costMaterials: groupCategories.reduce((s, c) => s + Number(c.cost_materials), 0),
+      costLabor: groupCategories.reduce((s, c) => s + Number(c.cost_labor), 0),
+      costSubMaterials: groupCategories.reduce((s, c) => s + Number(c.cost_sub_materials), 0),
+      costSubLabor: groupCategories.reduce((s, c) => s + Number(c.cost_sub_labor), 0),
+      total: groupCategories.reduce((s, c) => s + Number(c.total), 0),
     });
 
     return result;
-  }, [categories]);
+  }, [groupCategories, costGroup]);
 
   // Таблица помесячного распределения
   const monthlyRows = useMemo((): IScheduleV2MonthlyRow[] => {
     const result: IScheduleV2MonthlyRow[] = [];
-    const groups: Array<'direct' | 'commercial'> = ['direct', 'commercial'];
 
-    for (const group of groups) {
-      result.push({
-        key: `header_${group}`,
-        name: COST_GROUP_LABELS[group],
-        isHeader: true,
-        costGroup: group,
-      });
-
-      const groupCats = categories
-        .filter((c) => c.cost_group === group)
-        .sort((a, b) => a.sort_order - b.sort_order);
-
-      for (const cat of groupCats) {
-        const row: IScheduleV2MonthlyRow = {
-          key: `monthly_${cat.id}`,
-          name: cat.name,
-          categoryId: cat.id,
-          costGroup: group,
-        };
-        const catMonthly = filteredMonthly.filter((m) => m.category_id === cat.id);
-        for (const m of catMonthly) {
-          row[m.month_key] = Number(m.amount);
-        }
-        result.push(row);
-      }
-
-      // Итого по группе
-      const groupTotalRow: IScheduleV2MonthlyRow = {
-        key: `total_${group}`,
-        name: `Итого ${COST_GROUP_LABELS[group].toLowerCase()}`,
-        isTotal: true,
-        isBold: true,
-        costGroup: group,
+    for (const cat of groupCategories) {
+      const row: IScheduleV2MonthlyRow = {
+        key: `monthly_${cat.id}`,
+        name: cat.name,
+        categoryId: cat.id,
       };
-      const groupCatIds = new Set(groupCats.map((c) => c.id));
-      for (const mk of monthKeys) {
-        let sum = 0;
-        for (const m of filteredMonthly) {
-          if (groupCatIds.has(m.category_id) && m.month_key === mk) {
-            sum += Number(m.amount);
-          }
-        }
-        if (sum !== 0) groupTotalRow[mk] = sum;
+      const catMonthly = filteredMonthly.filter((m) => m.category_id === cat.id);
+      for (const m of catMonthly) {
+        row[m.month_key] = Number(m.amount);
       }
-      result.push(groupTotalRow);
+      result.push(row);
     }
+
+    // Итого по категориям
+    const groupTotalRow: IScheduleV2MonthlyRow = {
+      key: 'total_categories',
+      name: 'Итого по категориям',
+      isTotal: true,
+      isBold: true,
+    };
+    for (const mk of monthKeys) {
+      let sum = 0;
+      for (const m of filteredMonthly) {
+        if (groupCatIds.has(m.category_id) && m.month_key === mk) {
+          sum += Number(m.amount);
+        }
+      }
+      if (sum !== 0) groupTotalRow[mk] = sum;
+    }
+    result.push(groupTotalRow);
 
     // Финансовые строки
     result.push({
@@ -252,20 +208,22 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
       };
 
       if (code === 'total_smr') {
-        // Сумма всех категорий
         for (const mk of monthKeys) {
           let sum = 0;
           for (const m of filteredMonthly) {
-            if (m.month_key === mk) sum += Number(m.amount);
+            if (groupCatIds.has(m.category_id) && m.month_key === mk) {
+              sum += Number(m.amount);
+            }
           }
           if (sum !== 0) row[mk] = sum;
         }
       } else if (code === 'total_smr_no_vat') {
-        // СМР без НДС
         for (const mk of monthKeys) {
           let sum = 0;
           for (const m of filteredMonthly) {
-            if (m.month_key === mk) sum += Number(m.amount);
+            if (groupCatIds.has(m.category_id) && m.month_key === mk) {
+              sum += Number(m.amount);
+            }
           }
           if (sum !== 0) {
             const year = parseInt(mk.split('-')[0], 10);
@@ -274,11 +232,12 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
           }
         }
       } else if (code === 'total_income') {
-        // Итого поступление = СМР + Аванс - Зачет Аванса - ГУ + Возврат ГУ
         for (const mk of monthKeys) {
           let smrSum = 0;
           for (const m of filteredMonthly) {
-            if (m.month_key === mk) smrSum += Number(m.amount);
+            if (groupCatIds.has(m.category_id) && m.month_key === mk) {
+              smrSum += Number(m.amount);
+            }
           }
           const getFinVal = (fc: ScheduleV2FinanceCode) => {
             const entry = filteredFinance.find(
@@ -304,16 +263,15 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     }
 
     return result;
-  }, [categories, filteredMonthly, filteredFinance, monthKeys]);
+  }, [groupCategories, filteredMonthly, filteredFinance, monthKeys, groupCatIds]);
 
   return {
-    projects,
-    selectedProjectId,
-    setSelectedProjectId,
+    projectName,
+    costGroup,
+    setCostGroup,
     costRows,
     monthlyRows,
     monthKeys,
-    categories,
     loading,
     error,
     reload: loadData,
