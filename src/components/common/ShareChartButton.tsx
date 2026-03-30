@@ -1,7 +1,7 @@
 import { type FC, useRef, useCallback } from 'react';
 import { Button, message } from 'antd';
 import { ShareAltOutlined } from '@ant-design/icons';
-import { toPng } from 'html-to-image';
+import html2canvas from 'html2canvas';
 
 interface IProps {
   chartRef: React.RefObject<HTMLDivElement | null>;
@@ -16,22 +16,27 @@ export const ShareChartButton: FC<IProps> = ({ chartRef, title = 'График' 
     loadingRef.current = true;
 
     try {
-      const dataUrl = await toPng(chartRef.current, {
+      const canvas = await html2canvas(chartRef.current, {
         backgroundColor: '#fff',
-        pixelRatio: 2,
+        scale: 2,
+        useCORS: true,
       });
 
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png');
+      });
+
       const file = new File([blob], `${title}.png`, { type: 'image/png' });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title });
       } else {
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = dataUrl;
+        link.href = url;
         link.download = `${title}.png`;
         link.click();
+        URL.revokeObjectURL(url);
         message.success('График сохранён');
       }
     } catch {
