@@ -2,7 +2,7 @@ import { type FC, useMemo, useRef } from 'react';
 import { Card, Tooltip, Statistic, Row, Col } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { DualAxes } from '@ant-design/charts';
-import type { IBddsDashboardData, IMonthDataPoint } from '../../../types/dashboard';
+import type { IBddsDashboardData, IProjectMonthDataPoint } from '../../../types/dashboard';
 import { ShareChartButton } from '../../common/ShareChartButton';
 
 interface IProps {
@@ -11,7 +11,7 @@ interface IProps {
 
 const HELP_TEXT = `Поступления: факт vs план.
 
-• Столбцы — фактические поступления (итого).
+• Столбцы — фактические поступления с разбивкой по проектам (stacked).
 • Пунктирная линия — плановые поступления.
 
 Столбцы обрываются на текущем месяце. Линия плана продолжается до конца периода.`;
@@ -27,13 +27,20 @@ const axisFormatter = (v: number): string => {
   return mln.toLocaleString('ru-RU', { maximumFractionDigits: 1 });
 };
 
+// Палитра оттенков синего/голубого для проектов
+const BLUE_PALETTE = [
+  '#1890ff', '#0050b3', '#40a9ff', '#003a8c', '#69c0ff',
+  '#002766', '#91d5ff', '#0958d9', '#4096ff', '#1677ff',
+  '#bae0ff', '#1d39c4', '#597ef7', '#2f54eb', '#85a5ff',
+];
+
 export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const hasData = data.factIncomeLine.length > 0 || data.planIncomeLine.length > 0;
 
   if (!hasData) return null;
 
-  const { months, lastFactMonth, factBars, planLine } = useMemo(() => {
+  const { months, lastFactMonth, factBars, planLine, projectNames, projectColorMap } = useMemo(() => {
     const monthOrder: string[] = [];
     const seen = new Set<string>();
 
@@ -49,17 +56,45 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
       if (pt.value > 0) lastFact = pt.month;
     }
 
-    // Обрезаем факт до последнего ненулевого месяца
-    const factBars: IMonthDataPoint[] = [];
+    // Собираем уникальные имена проектов
+    const projectNamesSet = new Set<string>();
+    for (const pt of data.factIncomeByProject) {
+      projectNamesSet.add(pt.project);
+    }
+    const projectNames = Array.from(projectNamesSet).sort();
+
+    // Маппинг проект -> цвет
+    const projectColorMap = new Map<string, string>();
+    projectNames.forEach((name, i) => {
+      projectColorMap.set(name, BLUE_PALETTE[i % BLUE_PALETTE.length]);
+    });
+
+    // Факт по проектам, обрезанный до последнего ненулевого месяца
+    const factBars: IProjectMonthDataPoint[] = [];
     let reachedEnd = false;
-    for (const pt of data.factIncomeLine) {
+    for (const m of monthOrder) {
       if (reachedEnd) continue;
-      factBars.push(pt);
-      if (pt.month === lastFact) reachedEnd = true;
+      const monthEntries = data.factIncomeByProject.filter((pt) => pt.month === m);
+      if (monthEntries.length > 0) {
+        for (const entry of monthEntries) {
+          factBars.push(entry);
+        }
+      } else {
+        // Месяц без данных по проектам — добавляем нулевой столбец чтобы ось X не ломалась
+        factBars.push({ month: m, value: 0, project: projectNames[0] || '' });
+      }
+      if (m === lastFact) reachedEnd = true;
     }
 
-    return { months: monthOrder, lastFactMonth: lastFact, factBars, planLine: data.planIncomeLine };
-  }, [data.factIncomeLine, data.planIncomeLine]);
+    return {
+      months: monthOrder,
+      lastFactMonth: lastFact,
+      factBars,
+      planLine: data.planIncomeLine,
+      projectNames,
+      projectColorMap,
+    };
+  }, [data.factIncomeLine, data.planIncomeLine, data.factIncomeByProject]);
 
   // KPI — до последнего фактического месяца
   const kpi = useMemo(() => {
@@ -78,17 +113,21 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
 
   // Tooltip map
   const tooltipMap = useMemo(() => {
-    const map = new Map<string, { plan: number; fact: number }>();
+    const map = new Map<string, { plan: number; fact: number; byProject: Array<{ project: string; value: number }> }>();
     for (const m of months) {
       const planPt = data.planIncomeLine.find((p) => p.month === m);
       const factPt = data.factIncomeLine.find((p) => p.month === m);
+      const byProject = data.factIncomeByProject
+        .filter((p) => p.month === m && p.value !== 0)
+        .sort((a, b) => b.value - a.value);
       map.set(m, {
         plan: planPt?.value ?? 0,
         fact: factPt?.value ?? 0,
+        byProject,
       });
     }
     return map;
-  }, [months, data.planIncomeLine, data.factIncomeLine]);
+  }, [months, data.planIncomeLine, data.factIncomeLine, data.factIncomeByProject]);
 
   const config = {
     xField: 'month',
@@ -101,26 +140,46 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
           if (!info) return '';
           const pct = info.plan > 0 ? ((info.fact / info.plan) * 100).toFixed(0) : '—';
           const deltaColor = info.fact >= info.plan ? '#52c41a' : '#ff4d4f';
+          const projectRows = info.byProject
+            .map((p) => {
+              const color = projectColorMap.get(p.project) || '#1890ff';
+              return `<div style="display:flex;align-items:center;gap:4px">
+                <span style="width:8px;height:8px;background:${color};border-radius:1px;display:inline-block;border:1px solid #fff"></span>
+                <span>${p.project}: <b>${formatMln(p.value)} млн</b></span>
+              </div>`;
+            })
+            .join('');
           return `<div style="padding:4px 0;font-size:13px;line-height:1.6">
             <div style="font-weight:600;margin-bottom:4px">${monthKey}</div>
             <div>План: <b>${formatMln(info.plan)} млн</b></div>
             <div>Факт: <b>${formatMln(info.fact)} млн</b></div>
             <div>Выполнение: <span style="color:${deltaColor};font-weight:600">${pct}%</span></div>
+            ${projectRows ? `<div style="margin-top:4px;border-top:1px solid #f0f0f0;padding-top:4px">${projectRows}</div>` : ''}
           </div>`;
         },
       },
     },
     children: [
-      // Столбцы факта — единый синий столбец
+      // Stacked столбцы факта по проектам
       {
         data: factBars,
         type: 'interval' as const,
         yField: 'value',
+        colorField: 'project',
+        stack: true,
         scale: {
           x: { domain: months },
           y: { key: 'shared' },
+          color: {
+            domain: projectNames,
+            range: projectNames.map((name) => projectColorMap.get(name) || '#1890ff'),
+          },
         },
-        style: { maxWidth: 36, fill: '#1890ff', fillOpacity: 0.85 },
+        style: {
+          maxWidth: 36,
+          stroke: '#ffffff',
+          lineWidth: 1,
+        },
         axis: {
           x: {
             title: false,
@@ -139,10 +198,10 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
         legend: false,
         tooltip: {
           items: [
-            (d: IMonthDataPoint) => ({
-              name: 'Факт',
+            (d: IProjectMonthDataPoint) => ({
+              name: d.project,
               value: formatMln(d.value) + ' млн',
-              color: '#1890ff',
+              color: projectColorMap.get(d.project) || '#1890ff',
             }),
           ],
         },
@@ -169,7 +228,7 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
         legend: false,
         tooltip: {
           items: [
-            (d: IMonthDataPoint) => ({
+            (d: { month: string; value: number; type: string }) => ({
               name: 'План',
               value: formatMln(d.value) + ' млн',
               color: '#595959',
@@ -224,12 +283,20 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
             />
           </Col>
         </Row>
-        {/* Легенда */}
+        {/* Легенда: проекты + план */}
         <div style={{ display: 'flex', gap: 14, marginBottom: 8, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
-            <span style={{ width: 12, height: 10, background: '#1890ff', opacity: 0.85, display: 'inline-block', borderRadius: 2 }} />
-            <span style={{ color: '#595959' }}>Факт</span>
-          </div>
+          {projectNames.map((name) => (
+            <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+              <span style={{
+                width: 12, height: 10,
+                background: projectColorMap.get(name) || '#1890ff',
+                display: 'inline-block', borderRadius: 2,
+                border: '1px solid #fff',
+                boxShadow: '0 0 0 0.5px rgba(0,0,0,0.15)',
+              }} />
+              <span style={{ color: '#595959' }}>{name}</span>
+            </div>
+          ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
             <svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" stroke="#595959" strokeWidth="2" strokeDasharray="4 3" /></svg>
             <span style={{ color: '#595959' }}>План</span>

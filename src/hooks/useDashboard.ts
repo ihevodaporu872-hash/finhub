@@ -10,7 +10,7 @@ import * as fixedPlanService from '../services/bdrFixedExpensesPlanService';
 import { MONTHS, SECTION_NAMES, SECTION_ORDER } from '../utils/constants';
 import { OVERHEAD_CODES } from '../utils/bdrConstants';
 import { calculateNetCashFlow } from '../utils/calculations';
-import type { IBdrDashboardData, IBddsDashboardData, IMaterialsDeltaData, IMonthDataPoint, ICostItem, IWaterfallItem, IMarginTrendPoint } from '../types/dashboard';
+import type { IBdrDashboardData, IBddsDashboardData, IMaterialsDeltaData, IMonthDataPoint, IProjectMonthDataPoint, ICostItem, IWaterfallItem, IMarginTrendPoint } from '../types/dashboard';
 import type { Project } from '../types/projects';
 import type { MonthValues, BdrSubType } from '../types/bdr';
 import type { BddsCategory, BddsRow, SectionCode } from '../types/bdds';
@@ -379,8 +379,15 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
     let planIncTotal = 0, factIncTotal = 0;
     const planFactIncome: IMonthDataPoint[] = [];
     const factIncomeLine: IMonthDataPoint[] = [];
+    const factIncomeByProject: IProjectMonthDataPoint[] = [];
     const planIncomeLine: IMonthDataPoint[] = [];
     const ncfBySection: IMonthDataPoint[] = [];
+
+    // Маппинг project_id -> name
+    const projectNameMap = new Map<string, string>();
+    for (const p of projects) {
+      projectNameMap.set(p.id, p.name);
+    }
 
     for (const d of bddsYears) {
       const cats = d.categories;
@@ -442,6 +449,14 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         // Факт поступлений для столбцов комбо-графика
         factIncomeLine.push({ month: label, value: factInc, type: 'Факт' });
 
+        // Факт по проектам для stacked bar
+        for (const entry of d.incomeByProject) {
+          if (entry.month === m.key && entry.amount !== 0) {
+            const projName = projectNameMap.get(entry.project_id) || 'Без проекта';
+            factIncomeByProject.push({ month: label, value: entry.amount, project: projName });
+          }
+        }
+
         // ЧДП по секциям
         for (const sc of SECTION_ORDER) {
           const ncfVal = buildNcfForSection(sc as SectionCode, m.key, true);
@@ -455,7 +470,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
     }
 
     return {
-      planFactIncome, factIncomeLine, planIncomeLine, ncfBySection,
+      planFactIncome, factIncomeLine, factIncomeByProject, planIncomeLine, ncfBySection,
       kpis: {
         ncfOperating: ncfOp, ncfInvesting: ncfInv, ncfFinancing: ncfFin,
         ncfTotal: ncfOp + ncfInv + ncfFin,

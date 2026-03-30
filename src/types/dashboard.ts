@@ -4,6 +4,12 @@ export interface IMonthDataPoint {
   type: string;
 }
 
+export interface IProjectMonthDataPoint {
+  month: string;
+  value: number;
+  project: string;
+}
+
 export interface ICostItem {
   month: string;
   category: string;
@@ -75,6 +81,7 @@ export interface IMaterialsDeltaData {
 export interface IBddsDashboardData {
   planFactIncome: IMonthDataPoint[];
   factIncomeLine: IMonthDataPoint[];
+  factIncomeByProject: IProjectMonthDataPoint[];
   planIncomeLine: IMonthDataPoint[];
   ncfBySection: IMonthDataPoint[];
   kpis: {
