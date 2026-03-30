@@ -23,6 +23,7 @@ const menuItems: MenuItem[] = [
   { key: '/bdds', icon: <DollarOutlined />, label: 'БДДС' },
   { key: '/bbl', icon: <BankOutlined />, label: 'ББЛ' },
   { key: '/bdds/income', icon: <FundOutlined />, label: 'Плановый график' },
+  { key: '/bdds/schedule-v2', icon: <FundOutlined />, label: 'Плановый график 2.0' },
   { key: '/actual-execution', icon: <CheckCircleOutlined />, label: 'Факт. выполнение' },
   { key: '/guarantee', icon: <SafetyCertificateOutlined />, label: 'Контроль ГУ' },
   { key: '/dashboards', icon: <DashboardOutlined />, label: 'Дашборды' },

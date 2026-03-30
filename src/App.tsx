@@ -9,6 +9,7 @@ import { AdminUsersPageWrapper } from './pages/AdminUsersPageWrapper';
 import { AdminProjectsPageWrapper } from './pages/AdminProjectsPageWrapper';
 import { BddsIncomePageWrapper } from './pages/BddsIncomePageWrapper';
 import { BddsReceiptsPageWrapper } from './pages/BddsReceiptsPageWrapper';
+import { ScheduleV2PageWrapper } from './pages/ScheduleV2PageWrapper';
 import { GuaranteePageWrapper } from './pages/GuaranteePageWrapper';
 
 export const App = () => {
@@ -20,6 +21,7 @@ export const App = () => {
           <Route path="/bdds" element={<BddsPageWrapper />} />
           <Route path="/bdds/income" element={<BddsIncomePageWrapper />} />
           <Route path="/bdds/receipts" element={<BddsReceiptsPageWrapper />} />
+          <Route path="/bdds/schedule-v2" element={<ScheduleV2PageWrapper />} />
           <Route path="/guarantee" element={<GuaranteePageWrapper />} />
           <Route path="/bdr" element={<BdrPageWrapper />} />
           <Route path="/bbl" element={<BblPageWrapper />} />

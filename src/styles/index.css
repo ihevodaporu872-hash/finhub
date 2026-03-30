@@ -474,6 +474,19 @@ body {
   margin-bottom: 16px;
 }
 
+/* Плановый график 2.0 — заголовки секций */
+.sv2-section-header td {
+  background-color: #f0f0f0 !important;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* Плановый график 2.0 — итоговые строки */
+.sv2-total-row td {
+  background-color: #e6f7ff !important;
+  font-weight: 600;
+}
+
 /* Адаптивность БДР */
 @media (max-width: 768px) {
   .bdr-overhead-indent {
