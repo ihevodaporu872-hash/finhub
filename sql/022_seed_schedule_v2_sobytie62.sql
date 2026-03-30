@@ -180,13 +180,13 @@ BEGIN
   WHERE c.project_id = v_project_id
     AND c.total > 0;
 
-  -- 4. Финансовые строки
+  -- 4. Финансовые строки — только входные данные (авансы из Приложения 4)
+  -- Зачёт аванса, ГУ, возврат ГУ рассчитываются динамически в хуке по формулам из договора
   DELETE FROM schedule_v2_finance WHERE project_id = v_project_id;
 
-  -- Аванс (Приход) — по графику авансирования (Приложение 4)
+  -- Аванс (Приход) — из Графика авансирования (Приложение 4)
   INSERT INTO schedule_v2_finance (project_id, row_code, month_key, amount)
   VALUES
-    -- Авансы на материалы по графику авансирования
     (v_project_id, 'advance_income', '2026-01', 69847694.10),
     (v_project_id, 'advance_income', '2026-02', 341003015.42),
     (v_project_id, 'advance_income', '2026-03', 114799021.06),
@@ -208,30 +208,5 @@ BEGIN
     (v_project_id, 'advance_income', '2027-07', 106310454.03),
     (v_project_id, 'advance_income', '2027-08', 14838727.21),
     (v_project_id, 'advance_income', '2027-09', 16026999.99);
-
-  -- Гарантийное удержание — 5% от СМР каждого месяца (стандарт ДС СТРОЙ)
-  INSERT INTO schedule_v2_finance (project_id, row_code, month_key, amount)
-  SELECT v_project_id, 'guarantee_retention', m.month_key,
-    ROUND(SUM(m.amount) * 0.05, 2)
-  FROM schedule_v2_monthly m
-  WHERE m.project_id = v_project_id
-  GROUP BY m.month_key
-  HAVING SUM(m.amount) > 0;
-
-  -- Зачет аванса — пропорционально выполнению (% от аванса = % выполнения)
-  INSERT INTO schedule_v2_finance (project_id, row_code, month_key, amount)
-  SELECT v_project_id, 'advance_offset', m.month_key,
-    ROUND(SUM(m.amount) * 0.30, 2)  -- ~30% зачёт (пропорция аванс/общая стоимость)
-  FROM schedule_v2_monthly m
-  WHERE m.project_id = v_project_id
-  GROUP BY m.month_key
-  HAVING SUM(m.amount) > 0;
-
-  -- Возврат ГУ — через 24 месяца после окончания работ
-  INSERT INTO schedule_v2_finance (project_id, row_code, month_key, amount)
-  SELECT v_project_id, 'guarantee_return', '2030-09',
-    ROUND(SUM(amount), 2)
-  FROM schedule_v2_finance
-  WHERE project_id = v_project_id AND row_code = 'guarantee_retention';
 
 END $$;

@@ -6,13 +6,18 @@ import type {
   IScheduleV2Finance,
   IScheduleV2CostRow,
   IScheduleV2MonthlyRow,
-  ScheduleV2FinanceCode,
 } from '../types/scheduleV2';
-import { FINANCE_CODES, FINANCE_ROW_LABELS, EDITABLE_FINANCE_CODES } from '../types/scheduleV2';
+import { FINANCE_ROW_LABELS } from '../types/scheduleV2';
 import * as scheduleV2Service from '../services/scheduleV2Service';
 import * as projectsService from '../services/projectsService';
 
 type CostGroup = 'direct' | 'commercial';
+
+/** Ставка ГУ — 5% от СМР (стандарт ДС СТРОЙ / ДОНСТРОЙ) */
+const GU_RATE = 0.05;
+/** НДС 22% с 2026 г. */
+const VAT_RATE_2026 = 22;
+const VAT_RATE_DEFAULT = 20;
 
 interface IUseScheduleV2Result {
   projectName: string;
@@ -36,7 +41,6 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Находим проект Событие 6.2 при загрузке
   useEffect(() => {
     (async () => {
       try {
@@ -80,7 +84,21 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     loadData();
   }, [loadData]);
 
-  // Фильтрация по годам
+  // === Прямые категории (для финансовых расчётов — всегда direct) ===
+  const directCategories = useMemo(() => {
+    return categories.filter((c) => c.cost_group === 'direct');
+  }, [categories]);
+
+  const directCatIds = useMemo(() => {
+    return new Set(directCategories.map((c) => c.id));
+  }, [directCategories]);
+
+  /** Общая сумма контракта (1чЦСР) по прямым затратам */
+  const totalContractValue = useMemo(() => {
+    return directCategories.reduce((s, c) => s + Number(c.total), 0);
+  }, [directCategories]);
+
+  // === Фильтрация по годам ===
   const filteredMonthly = useMemo(() => {
     return monthlyData.filter((e) => {
       const year = parseInt(e.month_key.split('-')[0], 10);
@@ -95,19 +113,18 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     });
   }, [financeData, yearFrom, yearTo]);
 
-  // Категории текущей группы
+  // === Категории текущей группы (для отображения) ===
   const groupCategories = useMemo(() => {
     return categories
       .filter((c) => c.cost_group === costGroup)
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [categories, costGroup]);
 
-  // ID категорий текущей группы для фильтрации monthly
   const groupCatIds = useMemo(() => {
     return new Set(groupCategories.map((c) => c.id));
   }, [groupCategories]);
 
-  // Месяцы
+  // === Месяцы ===
   const monthKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const e of filteredMonthly) {
@@ -117,7 +134,105 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     return Array.from(keys).sort();
   }, [filteredMonthly, filteredFinance, groupCatIds]);
 
-  // Таблица стоимости
+  // === Помесячные суммы СМР по прямым затратам (для финансовых расчётов) ===
+  const directSmrByMonth = useMemo((): Map<string, number> => {
+    const map = new Map<string, number>();
+    for (const e of filteredMonthly) {
+      if (directCatIds.has(e.category_id)) {
+        map.set(e.month_key, (map.get(e.month_key) || 0) + Number(e.amount));
+      }
+    }
+    return map;
+  }, [filteredMonthly, directCatIds]);
+
+  // === Авансы из БД ===
+  const advanceIncomeByMonth = useMemo((): Map<string, number> => {
+    const map = new Map<string, number>();
+    for (const e of filteredFinance) {
+      if (e.row_code === 'advance_income') {
+        map.set(e.month_key, (map.get(e.month_key) || 0) + Number(e.amount));
+      }
+    }
+    return map;
+  }, [filteredFinance]);
+
+  // === Динамический расчёт финансовых параметров по формулам договора ===
+  const financeCalc = useMemo(() => {
+    const allMonths = Array.from(new Set([
+      ...directSmrByMonth.keys(),
+      ...advanceIncomeByMonth.keys(),
+    ])).sort();
+
+    const result: Record<string, {
+      smr: number;
+      smrNoVat: number;
+      advanceIncome: number;
+      advanceOffset: number;
+      guaranteeRetention: number;
+      guaranteeReturn: number;
+      totalIncome: number;
+    }> = {};
+
+    let cumulativeWorkDone = 0;
+    let cumulativeAdvancesPaid = 0;
+    let cumulativeAdvancesOffset = 0;
+    let cumulativeGU = 0;
+
+    for (const mk of allMonths) {
+      const smr = directSmrByMonth.get(mk) || 0;
+      const advanceIncome = advanceIncomeByMonth.get(mk) || 0;
+      const year = parseInt(mk.split('-')[0], 10);
+      const vatRate = year >= 2026 ? VAT_RATE_2026 : VAT_RATE_DEFAULT;
+      const smrNoVat = smr * 100 / (100 + vatRate);
+
+      // --- Зачёт аванса (п.4.17.2 договора) ---
+      // % зачёта = непогашенный аванс на начало периода / оставшиеся работы на начало периода
+      // Зачёт = СМР_месяца × % зачёта
+      const unpaidAdvances = cumulativeAdvancesPaid - cumulativeAdvancesOffset;
+      const remainingWork = totalContractValue - cumulativeWorkDone;
+      const offsetPercent = remainingWork > 0 ? unpaidAdvances / remainingWork : 0;
+      const advanceOffset = smr * offsetPercent;
+
+      // --- Гарантийное удержание — 5% от СМР ---
+      const guaranteeRetention = smr * GU_RATE;
+
+      // --- Итого поступление = СМР + Аванс - Зачёт - ГУ + Возврат ГУ ---
+      const totalIncome = smr + advanceIncome - advanceOffset - guaranteeRetention;
+
+      result[mk] = {
+        smr,
+        smrNoVat,
+        advanceIncome,
+        advanceOffset,
+        guaranteeRetention,
+        guaranteeReturn: 0,
+        totalIncome,
+      };
+
+      // Обновляем накопительные итоги
+      cumulativeAdvancesPaid += advanceIncome;
+      cumulativeAdvancesOffset += advanceOffset;
+      cumulativeWorkDone += smr;
+      cumulativeGU += guaranteeRetention;
+    }
+
+    // Возврат ГУ — через 24 месяца после окончания работ (сентябрь 2028 → сентябрь 2030)
+    const guReturnMonth = '2030-09';
+    if (!result[guReturnMonth]) {
+      result[guReturnMonth] = {
+        smr: 0, smrNoVat: 0, advanceIncome: 0,
+        advanceOffset: 0, guaranteeRetention: 0,
+        guaranteeReturn: cumulativeGU, totalIncome: cumulativeGU,
+      };
+    } else {
+      result[guReturnMonth].guaranteeReturn = cumulativeGU;
+      result[guReturnMonth].totalIncome += cumulativeGU;
+    }
+
+    return result;
+  }, [directSmrByMonth, advanceIncomeByMonth, totalContractValue]);
+
+  // === Таблица стоимости ===
   const costRows = useMemo((): IScheduleV2CostRow[] => {
     const result: IScheduleV2CostRow[] = [];
 
@@ -138,7 +253,6 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
       });
     }
 
-    // Итого
     result.push({
       key: 'grand_total',
       name: 'Итого',
@@ -157,10 +271,11 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     return result;
   }, [groupCategories, costGroup]);
 
-  // Таблица помесячного распределения
+  // === Таблица помесячного распределения ===
   const monthlyRows = useMemo((): IScheduleV2MonthlyRow[] => {
     const result: IScheduleV2MonthlyRow[] = [];
 
+    // Категории текущей группы
     for (const cat of groupCategories) {
       const row: IScheduleV2MonthlyRow = {
         key: `monthly_${cat.id}`,
@@ -174,88 +289,48 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
       result.push(row);
     }
 
-    // Итого по категориям
-    const groupTotalRow: IScheduleV2MonthlyRow = {
-      key: 'total_categories',
-      name: 'Итого по категориям',
-      isTotal: true,
-      isBold: true,
-    };
-    for (const mk of monthKeys) {
-      let sum = 0;
-      for (const m of filteredMonthly) {
-        if (groupCatIds.has(m.category_id) && m.month_key === mk) {
-          sum += Number(m.amount);
-        }
-      }
-      if (sum !== 0) groupTotalRow[mk] = sum;
-    }
-    result.push(groupTotalRow);
+    // Все месяцы для финансовых строк (включая 2030-09 для возврата ГУ)
+    const financeMonths = Object.keys(financeCalc).sort();
+    const allDisplayMonths = Array.from(new Set([...monthKeys, ...financeMonths])).sort();
 
-    // Финансовые строки
+    // Финансовые строки (рассчитаны динамически)
+    type FinanceField = 'smr' | 'smrNoVat' | 'advanceIncome' | 'advanceOffset' |
+      'guaranteeRetention' | 'guaranteeReturn' | 'totalIncome';
+
+    const financeRows: Array<{
+      code: string;
+      label: string;
+      field: FinanceField;
+      bold: boolean;
+    }> = [
+      { code: 'total_smr', label: FINANCE_ROW_LABELS.total_smr, field: 'smr', bold: true },
+      { code: 'total_smr_no_vat', label: FINANCE_ROW_LABELS.total_smr_no_vat, field: 'smrNoVat', bold: false },
+      { code: 'advance_income', label: FINANCE_ROW_LABELS.advance_income, field: 'advanceIncome', bold: false },
+      { code: 'advance_offset', label: FINANCE_ROW_LABELS.advance_offset, field: 'advanceOffset', bold: false },
+      { code: 'guarantee_retention', label: FINANCE_ROW_LABELS.guarantee_retention, field: 'guaranteeRetention', bold: false },
+      { code: 'guarantee_return', label: FINANCE_ROW_LABELS.guarantee_return, field: 'guaranteeReturn', bold: false },
+      { code: 'total_income', label: FINANCE_ROW_LABELS.total_income, field: 'totalIncome', bold: true },
+    ];
+
     result.push({
       key: 'header_finance',
       name: 'Финансовые параметры',
       isHeader: true,
     });
 
-    for (const code of FINANCE_CODES) {
+    for (const fr of financeRows) {
       const row: IScheduleV2MonthlyRow = {
-        key: `finance_${code}`,
-        name: FINANCE_ROW_LABELS[code],
-        rowCode: code,
-        isBold: code === 'total_smr' || code === 'total_income',
+        key: `finance_${fr.code}`,
+        name: fr.label,
+        rowCode: fr.code,
+        isBold: fr.bold,
       };
 
-      if (code === 'total_smr') {
-        for (const mk of monthKeys) {
-          let sum = 0;
-          for (const m of filteredMonthly) {
-            if (groupCatIds.has(m.category_id) && m.month_key === mk) {
-              sum += Number(m.amount);
-            }
-          }
-          if (sum !== 0) row[mk] = sum;
-        }
-      } else if (code === 'total_smr_no_vat') {
-        for (const mk of monthKeys) {
-          let sum = 0;
-          for (const m of filteredMonthly) {
-            if (groupCatIds.has(m.category_id) && m.month_key === mk) {
-              sum += Number(m.amount);
-            }
-          }
-          if (sum !== 0) {
-            const year = parseInt(mk.split('-')[0], 10);
-            const vatRate = year >= 2026 ? 22 : 20;
-            row[mk] = sum * 100 / (100 + vatRate);
-          }
-        }
-      } else if (code === 'total_income') {
-        for (const mk of monthKeys) {
-          let smrSum = 0;
-          for (const m of filteredMonthly) {
-            if (groupCatIds.has(m.category_id) && m.month_key === mk) {
-              smrSum += Number(m.amount);
-            }
-          }
-          const getFinVal = (fc: ScheduleV2FinanceCode) => {
-            const entry = filteredFinance.find(
-              (f) => f.row_code === fc && f.month_key === mk
-            );
-            return entry ? Number(entry.amount) : 0;
-          };
-          const total = smrSum
-            + getFinVal('advance_income')
-            - getFinVal('advance_offset')
-            - getFinVal('guarantee_retention')
-            + getFinVal('guarantee_return');
-          if (total !== 0) row[mk] = total;
-        }
-      } else if (EDITABLE_FINANCE_CODES.includes(code)) {
-        const codeEntries = filteredFinance.filter((f) => f.row_code === code);
-        for (const e of codeEntries) {
-          row[e.month_key] = Number(e.amount);
+      for (const mk of allDisplayMonths) {
+        const data = financeCalc[mk];
+        if (data) {
+          const val = data[fr.field];
+          if (val !== 0) row[mk] = Math.round(val * 100) / 100;
         }
       }
 
@@ -263,7 +338,13 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     }
 
     return result;
-  }, [groupCategories, filteredMonthly, filteredFinance, monthKeys, groupCatIds]);
+  }, [groupCategories, filteredMonthly, monthKeys, financeCalc]);
+
+  // Месяцы для отображения (объединение категорий + финансов)
+  const displayMonthKeys = useMemo(() => {
+    const financeMonths = Object.keys(financeCalc);
+    return Array.from(new Set([...monthKeys, ...financeMonths])).sort();
+  }, [monthKeys, financeCalc]);
 
   return {
     projectName,
@@ -271,7 +352,7 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     setCostGroup,
     costRows,
     monthlyRows,
-    monthKeys,
+    monthKeys: displayMonthKeys,
     loading,
     error,
     reload: loadData,
