@@ -41,7 +41,18 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
       setError(null);
 
       const projectsData = await projectsService.getProjects();
-      setProjects(projectsData.filter((p) => p.is_active));
+      const activeProjects = projectsData.filter((p) => p.is_active);
+      setProjects(activeProjects);
+
+      // Автовыбор первого проекта при загрузке
+      if (!selectedProjectId && activeProjects.length > 0) {
+        const sobytie = activeProjects.find((p) =>
+          p.code === 'SOB-62' || p.name.includes('Событие 6.2')
+        );
+        const autoProject = sobytie ?? activeProjects[0];
+        setSelectedProjectId(autoProject.id);
+        return;
+      }
 
       if (!selectedProjectId) {
         setCategories([]);

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, Spin, Alert, Tabs, Button } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -8,12 +8,10 @@ import { ScheduleV2CostTable } from './ScheduleV2CostTable';
 import { ScheduleV2MonthlyTable } from './ScheduleV2MonthlyTable';
 import type { Project } from '../../../types/projects';
 
-const currentYear = new Date().getFullYear();
-
 export const ScheduleV2Page = () => {
   const navigate = useNavigate();
-  const [yearFrom, setYearFrom] = useState(currentYear);
-  const [yearTo, setYearTo] = useState(currentYear + 2);
+  const [yearFrom, setYearFrom] = useState(2026);
+  const [yearTo, setYearTo] = useState(2028);
   const [activeTab, setActiveTab] = useState('cost');
 
   const {
@@ -26,6 +24,15 @@ export const ScheduleV2Page = () => {
     loading,
     error,
   } = useScheduleV2(yearFrom, yearTo);
+
+  // Автоподстройка годов при автовыборе проекта
+  useEffect(() => {
+    if (selectedProjectId) {
+      const project = projects.find((p) => p.id === selectedProjectId);
+      if (project?.start_date) setYearFrom(new Date(project.start_date).getFullYear());
+      if (project?.gu_return_date) setYearTo(new Date(project.gu_return_date).getFullYear());
+    }
+  }, [selectedProjectId, projects]);
 
   const handleYearFromChange = useCallback((y: number) => {
     setYearFrom(y);
