@@ -63,35 +63,59 @@ export const BddsIncomeComboChart: FC<IProps> = ({ data }) => {
     }
     const projectNames = Array.from(projectNamesSet).sort();
 
-    // Маппинг проект -> цвет
-    const projectColorMap = new Map<string, string>();
-    projectNames.forEach((name, i) => {
-      projectColorMap.set(name, BLUE_PALETTE[i % BLUE_PALETTE.length]);
-    });
+    // Цвета будут назначены после финализации списка проектов (см. ниже)
 
     // Факт по проектам, обрезанный до последнего ненулевого месяца
+    // Если есть факт из factIncomeLine, но нет разбивки — записываем как «Прочие»
+    const factByMonthMap = new Map<string, number>();
+    for (const pt of data.factIncomeLine) {
+      factByMonthMap.set(pt.month, pt.value);
+    }
+
+    const OTHER_LABEL = 'Прочие';
     const factBars: IProjectMonthDataPoint[] = [];
     let reachedEnd = false;
     for (const m of monthOrder) {
       if (reachedEnd) continue;
-      const monthEntries = data.factIncomeByProject.filter((pt) => pt.month === m);
+      const monthEntries = data.factIncomeByProject.filter((pt) => pt.month === m && pt.value !== 0);
+      const projectTotal = monthEntries.reduce((s, e) => s + e.value, 0);
+      const totalFact = factByMonthMap.get(m) ?? 0;
+
       if (monthEntries.length > 0) {
         for (const entry of monthEntries) {
           factBars.push(entry);
         }
+        // Если есть разница между общим фактом и суммой по проектам
+        const diff = totalFact - projectTotal;
+        if (Math.abs(diff) > 1) {
+          factBars.push({ month: m, value: diff, project: OTHER_LABEL });
+          if (!projectNamesSet.has(OTHER_LABEL)) projectNamesSet.add(OTHER_LABEL);
+        }
+      } else if (totalFact > 0) {
+        // Нет разбивки — весь факт как «Прочие»
+        factBars.push({ month: m, value: totalFact, project: OTHER_LABEL });
+        if (!projectNamesSet.has(OTHER_LABEL)) projectNamesSet.add(OTHER_LABEL);
       } else {
-        // Месяц без данных по проектам — добавляем нулевой столбец чтобы ось X не ломалась
-        factBars.push({ month: m, value: 0, project: projectNames[0] || '' });
+        factBars.push({ month: m, value: 0, project: projectNames[0] || OTHER_LABEL });
       }
       if (m === lastFact) reachedEnd = true;
     }
+
+    // Пересобираем projectNames после возможного добавления «Прочие»
+    const finalProjectNames = Array.from(projectNamesSet).sort();
+
+    // Маппинг проект -> цвет
+    const projectColorMap = new Map<string, string>();
+    finalProjectNames.forEach((name, i) => {
+      projectColorMap.set(name, BLUE_PALETTE[i % BLUE_PALETTE.length]);
+    });
 
     return {
       months: monthOrder,
       lastFactMonth: lastFact,
       factBars,
       planLine: data.planIncomeLine,
-      projectNames,
+      projectNames: finalProjectNames,
       projectColorMap,
     };
   }, [data.factIncomeLine, data.planIncomeLine, data.factIncomeByProject]);

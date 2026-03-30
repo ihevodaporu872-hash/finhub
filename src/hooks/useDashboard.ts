@@ -42,6 +42,7 @@ interface IYearBddsData {
   factMap: Map<string, MonthValues>;
   incomeTotals: MonthValues;
   incomeByProject: Array<{ project_id: string; month: number; amount: number }>;
+  receiptFactByProject: Array<{ project_id: string; month: number; amount: number }>;
   bddsPlanFromSub: Record<string, Record<number, number>>;
 }
 
@@ -179,7 +180,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
           };
         })),
         Promise.all(years.map(async (year): Promise<IYearBddsData> => {
-          const [categories, planEntries, factEntries, incomeTotals, incomeByProject, bddsPlanFromSub, receiptFacts] = await Promise.all([
+          const [categories, planEntries, factEntries, incomeTotals, incomeByProject, bddsPlanFromSub, receiptFacts, receiptFactByProject] = await Promise.all([
             bddsService.getCategories(),
             bddsService.getEntries(year, 'plan', pid),
             bddsService.getEntries(year, 'fact', pid),
@@ -187,6 +188,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
             bddsIncomeService.getIncomeTotalsByMonthByProject(year),
             bdrSubService.getSubTotalsForBdds(year, pid),
             receiptService.getReceiptFactTotals(year, pid),
+            receiptService.getReceiptFactByProject(year),
           ]);
           const factMap = buildEntryMap(factEntries, 'category_id');
           // Добавляем факт из bdds_receipt_details
@@ -203,6 +205,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
             factMap,
             incomeTotals,
             incomeByProject,
+            receiptFactByProject,
             bddsPlanFromSub,
           };
         })),
@@ -449,8 +452,8 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         // Факт поступлений для столбцов комбо-графика
         factIncomeLine.push({ month: label, value: factInc, type: 'Факт' });
 
-        // Факт по проектам для stacked bar
-        for (const entry of d.incomeByProject) {
+        // Факт по проектам для stacked bar (из bdds_receipt_details)
+        for (const entry of d.receiptFactByProject) {
           if (entry.month === m.key && entry.amount !== 0) {
             const projName = projectNameMap.get(entry.project_id) || 'Без проекта';
             factIncomeByProject.push({ month: label, value: entry.amount, project: projName });

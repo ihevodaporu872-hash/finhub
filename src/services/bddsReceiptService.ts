@@ -112,6 +112,32 @@ export async function getReceiptFactTotals(
   return result;
 }
 
+export async function getReceiptFactByProject(
+  year: number
+): Promise<Array<{ project_id: string; month: number; amount: number }>> {
+  const { data, error } = await supabase
+    .from('bdds_receipt_details')
+    .select('project_id, month, amount')
+    .eq('year', year)
+    .limit(10000);
+
+  if (error) throw error;
+
+  // Группируем по (project_id, month)
+  const map = new Map<string, number>();
+  for (const row of (data ?? [])) {
+    const key = `${row.project_id}|${row.month}`;
+    map.set(key, (map.get(key) || 0) + Number(row.amount));
+  }
+
+  const result: Array<{ project_id: string; month: number; amount: number }> = [];
+  for (const [key, amount] of map) {
+    const [project_id, monthStr] = key.split('|');
+    result.push({ project_id, month: Number(monthStr), amount });
+  }
+  return result;
+}
+
 export async function deleteAllReceipts(
   projectId: string,
   categoryId: string,
