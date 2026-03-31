@@ -9,13 +9,14 @@ export const BDR_ROWS: BdrRowDef[] = [
   { code: 'readiness_percent', name: 'Процент готовности с начала строительства', isPercent: true, isCalculated: true },
   { code: 'nzp_to_revenue', name: 'Отношение НЗП к Выручке', isPercent: true, isCalculated: true, noPlan: true },
 
-  { code: 'cost_total', name: 'Себестоимость в т.ч.', isSemiBold: true, isCalculated: true, isCostParent: true, isKeyMetric: true },
+  { code: 'direct_cost_total', name: 'Прямая себестоимость', isSemiBold: true, isCalculated: true, isCostParent: true, isKeyMetric: true },
   { code: 'cost_materials', name: 'Материальные расходы', isClickable: true, subType: 'materials', isCostChild: true },
   { code: 'cost_labor', name: 'ФОТ основных рабочих', isClickable: true, subType: 'labor', isCostChild: true },
   { code: 'cost_subcontract', name: 'Субподряд', isClickable: true, subType: 'subcontract', isCostChild: true },
   { code: 'cost_design', name: 'Проектные работы', isClickable: true, subType: 'design', isCostChild: true },
   { code: 'cost_rental', name: 'Аренда БК и подъемников', isClickable: true, subType: 'rental', isCostChild: true },
-  { code: 'cost_overhead', name: 'Накладные расходы (косвенные) в т.ч. (ООЗ)', isClickable: true, isOverhead: true, isCalculated: true, isCostChild: true },
+  { code: 'cost_overhead', name: 'Накладные расходы (косвенные) в т.ч. (ООЗ)', isClickable: true, isOverhead: true, isCalculated: true },
+  { code: 'cost_total', name: 'Полная себестоимость (II + III)', isCalculated: true },
 
   { code: 'overhead_ratio', name: 'Коэф.накладных расходов', isPercent: true, isCalculated: true },
   { code: 'labor_cost_ratio', name: 'Доля ФОТ в себестоимости (Labor Cost Ratio)', isPercent: true, isCalculated: true },
@@ -99,12 +100,16 @@ export const BDR_SUB_TO_BDDS_NAME: Partial<Record<BdrSubType, string>> = {
 // Sub-типы, для которых БДДС план заполняется из bdr_sub_entries (Сумма, сдвиг +1 месяц)
 export const BDDS_PLAN_SUB_TYPES = Object.keys(BDR_SUB_TO_BDDS_NAME) as BdrSubType[];
 
-export const COST_ROW_CODES = [
+export const DIRECT_COST_ROW_CODES = [
   'cost_materials',
   'cost_labor',
   'cost_subcontract',
   'cost_design',
   'cost_rental',
+] as const;
+
+export const COST_ROW_CODES = [
+  ...DIRECT_COST_ROW_CODES,
   'cost_overhead',
 ] as const;
 

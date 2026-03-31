@@ -24,7 +24,7 @@ export const BDR_SECTIONS: IBdrSection[] = [
   {
     key: 'section_2',
     title: 'II. ПРЯМАЯ СЕБЕСТОИМОСТЬ',
-    summaryRowCode: 'cost_total',
+    summaryRowCode: 'direct_cost_total',
     childCodes: ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental'],
   },
   {
@@ -37,7 +37,7 @@ export const BDR_SECTIONS: IBdrSection[] = [
     key: 'section_4',
     title: 'IV. МАРЖИНАЛЬНАЯ ПРИБЫЛЬ',
     summaryRowCode: 'marginal_profit',
-    childCodes: ['gross_margin', 'overhead_ratio', 'labor_cost_ratio'],
+    childCodes: ['cost_total', 'gross_margin', 'overhead_ratio', 'labor_cost_ratio'],
     isProfit: true,
   },
   {
@@ -65,11 +65,12 @@ export const BDR_SECTIONS: IBdrSection[] = [
 /** Формулы для тултипов расчётных строк */
 export const BDR_FORMULAS: Record<string, string> = {
   revenue: 'Выручка = КС-2 с Заказчиком',
-  cost_total: 'Себестоимость = Материалы + ФОТ + Субподряд + ПИР + Аренда + Накладные',
+  direct_cost_total: 'Прямая себестоимость = Материалы + ФОТ + Субподряд + ПИР + Аренда',
+  cost_total: 'Полная себестоимость = Прямая себестоимость (II) + Накладные расходы (III)',
   cost_overhead: 'План: 10% от КС-2. Факт: сумма всех статей накладных расходов',
-  marginal_profit: 'Маржинальная прибыль = Выручка − Себестоимость',
+  marginal_profit: 'Маржинальная прибыль = Выручка − Прямая себестоимость (II) − Накладные расходы (III)',
   gross_margin: 'Gross Margin = Маржинальная прибыль / Выручка × 100%',
-  overhead_ratio: 'Коэф. накладных = Накладные / (Себестоимость − Накладные) × 100%',
+  overhead_ratio: 'Коэф. накладных = Накладные / Прямая себестоимость × 100%',
   labor_cost_ratio: 'Labor Cost Ratio = ФОТ / Себестоимость × 100%',
   fixed_expenses: 'План: 20% от КС-2. Факт: годовой ОФЗ / 12 × доля проекта',
   operating_profit: 'Операционная прибыль = Маржинальная прибыль − ОФЗ',

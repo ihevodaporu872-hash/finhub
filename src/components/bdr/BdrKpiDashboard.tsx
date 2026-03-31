@@ -31,9 +31,9 @@ const fmtMln = (v: number): string => {
   }) + ' млн';
 };
 
-/** Находит последний ненулевой факт по коду строки среди ВСЕХ годов (от последнего к первому) */
+/** Последний ненулевой факт-% по коду строки среди ВСЕХ годов */
 const getLastFactPercent = (yearRows: Map<number, BdrTableRow[]>, code: string): number => {
-  const years = [...yearRows.keys()].sort((a, b) => b - a); // от последнего к первому
+  const years = [...yearRows.keys()].sort((a, b) => b - a);
   for (const yr of years) {
     const rows = yearRows.get(yr);
     const row = rows?.find((r) => r.rowCode === code);
@@ -57,15 +57,27 @@ const getTotalFact = (yearRows: Map<number, BdrTableRow[]>, code: string): numbe
 };
 
 export const BdrKpiDashboard: FC<IProps> = ({ yearRows }) => {
+  // % готовности и НЗП — кумулятивные, берём последний ненулевой месяц
   const readiness = getLastFactPercent(yearRows, 'readiness_percent');
   const nzpToRevenue = getLastFactPercent(yearRows, 'nzp_to_revenue');
-  const grossMargin = getLastFactPercent(yearRows, 'gross_margin');
-  const netProfitMargin = getLastFactPercent(yearRows, 'net_profit_margin');
-  const laborCostRatio = getLastFactPercent(yearRows, 'labor_cost_ratio');
 
+  // Абсолютные значения из ИТОГО ФАКТ (Project to Date)
   const revenueFact = getTotalFact(yearRows, 'revenue');
-  const costFact = getTotalFact(yearRows, 'cost_total');
+  const directCostFact = getTotalFact(yearRows, 'direct_cost_total');
+  const overheadFact = getTotalFact(yearRows, 'cost_overhead');
+  const costFact = directCostFact + overheadFact;
   const netProfitFact = getTotalFact(yearRows, 'net_profit');
+  const laborFact = getTotalFact(yearRows, 'cost_labor');
+
+  // Расчёт KPI из кумулятивных ИТОГО (не из последнего месяца)
+  const grossMargin = revenueFact ? ((revenueFact - costFact) / revenueFact) * 100 : 0;
+  const netProfitMargin = revenueFact ? (netProfitFact / revenueFact) * 100 : 0;
+  const laborCostRatio = costFact ? (laborFact / costFact) * 100 : 0;
+
+  // НЗП: отрицательное = Перевыполнение (Overbilling)
+  const isOverbilling = nzpToRevenue < 0;
+  const nzpDisplay = isOverbilling ? Math.abs(nzpToRevenue) : nzpToRevenue;
+  const nzpLabel = isOverbilling ? 'Перевыполнение (Overbilling)' : 'НЗП / Выручка';
 
   const kpis: IKpiItem[] = [
     {
@@ -77,17 +89,19 @@ export const BdrKpiDashboard: FC<IProps> = ({ yearRows }) => {
       bgColor: '#f0f5ff',
     },
     {
-      title: 'НЗП / Выручка',
-      value: fmtPct(nzpToRevenue),
-      tooltip: 'Отношение незавершённого производства к выручке. Высокий % = риск кассового разрыва',
+      title: nzpLabel,
+      value: fmtPct(nzpDisplay),
+      tooltip: isOverbilling
+        ? 'КС-2 принято больше, чем выполнено — позитивный кэш-флоу для компании'
+        : 'Отношение незавершённого производства к выручке. Высокий % = риск кассового разрыва',
       icon: <AuditOutlined />,
-      color: nzpToRevenue > 15 ? '#fa8c16' : '#52c41a',
-      bgColor: nzpToRevenue > 15 ? '#fff7e6' : '#f6ffed',
+      color: isOverbilling ? '#52c41a' : (nzpToRevenue > 15 ? '#fa8c16' : '#52c41a'),
+      bgColor: isOverbilling ? '#f6ffed' : (nzpToRevenue > 15 ? '#fff7e6' : '#f6ffed'),
     },
     {
       title: 'Gross Margin',
       value: fmtPct(grossMargin),
-      tooltip: `Маржинальная прибыль / Выручка. Себестоимость факт: ${fmtMln(costFact)}`,
+      tooltip: `(Выручка − Себестоимость) / Выручка. Итого факт: выручка ${fmtMln(revenueFact)}, себестоимость ${fmtMln(costFact)}`,
       icon: <PercentageOutlined />,
       color: grossMargin >= 15 ? '#52c41a' : grossMargin >= 5 ? '#fa8c16' : '#ff4d4f',
       bgColor: grossMargin >= 15 ? '#f6ffed' : grossMargin >= 5 ? '#fff7e6' : '#fff1f0',
@@ -95,7 +109,7 @@ export const BdrKpiDashboard: FC<IProps> = ({ yearRows }) => {
     {
       title: 'Net Profit Margin',
       value: fmtPct(netProfitMargin),
-      tooltip: `Чистая прибыль / Выручка. Чистая прибыль факт: ${fmtMln(netProfitFact)}`,
+      tooltip: `Чистая прибыль / Выручка. Итого факт: ${fmtMln(netProfitFact)}`,
       icon: <FundOutlined />,
       color: netProfitMargin >= 5 ? '#52c41a' : netProfitMargin >= 0 ? '#fa8c16' : '#ff4d4f',
       bgColor: netProfitMargin >= 5 ? '#f6ffed' : netProfitMargin >= 0 ? '#fff7e6' : '#fff1f0',
@@ -103,7 +117,7 @@ export const BdrKpiDashboard: FC<IProps> = ({ yearRows }) => {
     {
       title: 'Labor Cost Ratio',
       value: fmtPct(laborCostRatio),
-      tooltip: 'Доля ФОТ в себестоимости. Индикатор трудоёмкости проекта',
+      tooltip: `Доля ФОТ в полной себестоимости. Итого факт: ФОТ ${fmtMln(laborFact)}, себестоимость ${fmtMln(costFact)}`,
       icon: <TeamOutlined />,
       color: '#722ed1',
       bgColor: '#f9f0ff',

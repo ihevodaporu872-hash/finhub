@@ -33,7 +33,7 @@ function getAlertClass(record: IBdrTreeRow, dk: string): string {
   const fact = (record[`fact_month_${dk}`] as number) || 0;
 
   // Расходные статьи: факт > план = перерасход
-  const costCodes = ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental', 'cost_overhead'];
+  const costCodes = ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental', 'cost_overhead', 'direct_cost_total'];
   if (costCodes.includes(record.rowCode) && isOverBudget(plan, fact)) {
     return 'bdr-cell-alert';
   }
@@ -63,7 +63,7 @@ function renderAlertValue(
   }
 
   // Перерасход > 100%
-  const costCodes = ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental', 'cost_overhead'];
+  const costCodes = ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental', 'cost_overhead', 'direct_cost_total'];
   if (costCodes.includes(record.rowCode) && isOverBudget(plan, fact)) {
     const pct = ((fact / plan) * 100).toFixed(0);
     return (
@@ -289,7 +289,7 @@ export const buildBdrTreeTotalColumns = (_readinessRow?: IBdrTreeRow): ColumnsTy
         onCell: (record: IBdrTreeRow) => {
           const plan = (record.plan_total as number) || 0;
           const fact = (record.fact_total as number) || 0;
-          const costCodes = ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental', 'cost_overhead'];
+          const costCodes = ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental', 'cost_overhead', 'direct_cost_total'];
           const alert = !record.isPercent && costCodes.includes(record.rowCode) && isOverBudget(plan, fact);
           return { className: ['bdds-total-cell', alert ? 'bdr-cell-alert' : ''].filter(Boolean).join(' ') };
         },
@@ -297,7 +297,7 @@ export const buildBdrTreeTotalColumns = (_readinessRow?: IBdrTreeRow): ColumnsTy
           if (record.isPercent) return null;
           const plan = (record.plan_total as number) || 0;
           const display = formatAmount(value);
-          const costCodes = ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental', 'cost_overhead'];
+          const costCodes = ['cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental', 'cost_overhead', 'direct_cost_total'];
           if (costCodes.includes(record.rowCode) && isOverBudget(plan, value)) {
             const pct = ((value / plan) * 100).toFixed(0);
             return (

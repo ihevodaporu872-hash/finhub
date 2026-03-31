@@ -5,7 +5,7 @@ import * as bdrSubService from '../services/bdrSubService';
 import * as actualExecutionService from '../services/actualExecutionService';
 import * as fixedPlanService from '../services/bdrFixedExpensesPlanService';
 import type { ActualExecutionTotals } from '../types/actualExecution';
-import { BDR_ROWS, BDR_OVERHEAD_ROWS, OVERHEAD_CODES, COST_ROW_CODES } from '../utils/bdrConstants';
+import { BDR_ROWS, BDR_OVERHEAD_ROWS, OVERHEAD_CODES, DIRECT_COST_ROW_CODES, COST_ROW_CODES } from '../utils/bdrConstants';
 import { MONTHS, buildYearMonthSlots } from '../utils/constants';
 import type { YearMonthSlot } from '../utils/constants';
 
@@ -212,14 +212,14 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
               }
               return sum + getVal(c, month, type);
             }, 0);
+          case 'direct_cost_total':
+            return DIRECT_COST_ROW_CODES.reduce((sum, c) => sum + calcMonthVal(c, month, type), 0);
           case 'cost_total':
-            return COST_ROW_CODES.reduce((sum, c) => sum + calcMonthVal(c, month, type), 0);
+            return calcMonthVal('direct_cost_total', month, type) + calcMonthVal('cost_overhead', month, type);
           case 'overhead_ratio': {
-            const total = calcMonthVal('cost_total', month, type);
-            const overhead = calcMonthVal('cost_overhead', month, type);
-            const base = total - overhead;
-            if (!base) return 0;
-            return (overhead / base) * 100;
+            const direct = calcMonthVal('direct_cost_total', month, type);
+            if (!direct) return 0;
+            return (calcMonthVal('cost_overhead', month, type) / direct) * 100;
           }
           case 'labor_cost_ratio': {
             const cost = calcMonthVal('cost_total', month, type);
@@ -227,7 +227,9 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
             return (calcMonthVal('cost_labor', month, type) / cost) * 100;
           }
           case 'marginal_profit':
-            return calcMonthVal('revenue', month, type) - calcMonthVal('cost_total', month, type);
+            return calcMonthVal('revenue', month, type)
+              - calcMonthVal('direct_cost_total', month, type)
+              - calcMonthVal('cost_overhead', month, type);
           case 'gross_margin': {
             const rev = calcMonthVal('revenue', month, type);
             if (!rev) return 0;
@@ -323,14 +325,14 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
         if (def.isCostChild) {
           if (!costExpanded) continue;
           result.push(buildRow(def, { isCostChild: true }));
-          if (def.isOverhead && overheadExpanded) {
-            for (const ohDef of BDR_OVERHEAD_ROWS) {
-              result.push(buildRow(ohDef, { isOverheadItem: true, isCostChild: true }));
-            }
-          }
           continue;
         }
         result.push(buildRow(def));
+        if (def.isOverhead && overheadExpanded) {
+          for (const ohDef of BDR_OVERHEAD_ROWS) {
+            result.push(buildRow(ohDef, { isOverheadItem: true }));
+          }
+        }
       }
 
       return result;
