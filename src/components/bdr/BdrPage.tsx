@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, Alert, message } from 'antd';
 import { useBdr } from '../../hooks/useBdr';
 import { BdrToolbar } from './BdrToolbar';
@@ -72,20 +72,13 @@ export const BdrPage = () => {
     reload();
   };
 
-  // KPI берём из последнего года диапазона — там самый актуальный кумулятив
-  const kpiRows = useMemo(() => {
-    if (!yearRows.size) return rows;
-    const lastYear = Math.max(...yearRows.keys());
-    return yearRows.get(lastYear) ?? rows;
-  }, [rows, yearRows]);
-
   if (error) {
     return <Alert type="error" message="Ошибка" description={error} showIcon />;
   }
 
   return (
     <>
-      <BdrKpiDashboard rows={kpiRows} />
+      <BdrKpiDashboard yearRows={yearRows} />
       <Card title="БДР — Бюджет Доходов и Расходов" loading={loading} className="mt-16">
         <BdrToolbar
           yearFrom={yearFrom}

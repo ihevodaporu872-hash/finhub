@@ -10,7 +10,7 @@ import {
 import type { BdrTableRow } from '../../types/bdr';
 
 interface IProps {
-  rows: BdrTableRow[];
+  yearRows: Map<number, BdrTableRow[]>;
 }
 
 interface IKpiItem {
@@ -22,11 +22,6 @@ interface IKpiItem {
   bgColor: string;
 }
 
-const getRowValue = (rows: BdrTableRow[], code: string, field: string): number => {
-  const row = rows.find((r) => r.rowCode === code);
-  return (row?.[field] as number) || 0;
-};
-
 const fmtPct = (v: number): string => v ? `${v.toFixed(1)}%` : '0%';
 const fmtMln = (v: number): string => {
   if (!v) return '0';
@@ -36,27 +31,41 @@ const fmtMln = (v: number): string => {
   }) + ' млн';
 };
 
-export const BdrKpiDashboard: FC<IProps> = ({ rows }) => {
-  // Берём факт за последний месяц с данными для % показателей
-  const getLastFactPercent = (code: string): number => {
-    const row = rows.find((r) => r.rowCode === code);
-    if (!row) return 0;
+/** Находит последний ненулевой факт по коду строки среди ВСЕХ годов (от последнего к первому) */
+const getLastFactPercent = (yearRows: Map<number, BdrTableRow[]>, code: string): number => {
+  const years = [...yearRows.keys()].sort((a, b) => b - a); // от последнего к первому
+  for (const yr of years) {
+    const rows = yearRows.get(yr);
+    const row = rows?.find((r) => r.rowCode === code);
+    if (!row) continue;
     for (let m = 12; m >= 1; m--) {
       const v = (row[`fact_month_${m}`] as number) || 0;
       if (v) return v;
     }
-    return 0;
-  };
+  }
+  return 0;
+};
 
-  const readiness = getLastFactPercent('readiness_percent');
-  const nzpToRevenue = getLastFactPercent('nzp_to_revenue');
-  const grossMargin = getLastFactPercent('gross_margin');
-  const netProfitMargin = getLastFactPercent('net_profit_margin');
-  const laborCostRatio = getLastFactPercent('labor_cost_ratio');
+/** Суммирует fact_total по коду строки за все годы */
+const getTotalFact = (yearRows: Map<number, BdrTableRow[]>, code: string): number => {
+  let total = 0;
+  for (const rows of yearRows.values()) {
+    const row = rows.find((r) => r.rowCode === code);
+    total += (row?.fact_total as number) || 0;
+  }
+  return total;
+};
 
-  const revenueFact = getRowValue(rows, 'revenue', 'fact_total');
-  const costFact = getRowValue(rows, 'cost_total', 'fact_total');
-  const netProfitFact = getRowValue(rows, 'net_profit', 'fact_total');
+export const BdrKpiDashboard: FC<IProps> = ({ yearRows }) => {
+  const readiness = getLastFactPercent(yearRows, 'readiness_percent');
+  const nzpToRevenue = getLastFactPercent(yearRows, 'nzp_to_revenue');
+  const grossMargin = getLastFactPercent(yearRows, 'gross_margin');
+  const netProfitMargin = getLastFactPercent(yearRows, 'net_profit_margin');
+  const laborCostRatio = getLastFactPercent(yearRows, 'labor_cost_ratio');
+
+  const revenueFact = getTotalFact(yearRows, 'revenue');
+  const costFact = getTotalFact(yearRows, 'cost_total');
+  const netProfitFact = getTotalFact(yearRows, 'net_profit');
 
   const kpis: IKpiItem[] = [
     {
