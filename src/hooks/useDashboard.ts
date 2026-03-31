@@ -294,9 +294,8 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
           marginTrend.push({ month: label, grossMargin, netMargin, planMargin, revenueFact: rf, revenuePlan: rp });
         }
 
-        // Себестоимость (гистограмма) — обрезаем пустые будущие периоды
-        const isEmptyFuture = lastCostFactIdx && curIdx > lastCostFactIdx && ct === 0;
-        if (!isEmptyFuture) {
+        // Себестоимость (гистограмма) — все месяцы диапазона (выровнены с S-кривой)
+        {
           const monthFactTotal = COST_CODES.reduce((sum, c) => sum + calcBdr(c, m.key, 'fact', d), 0);
           const monthPlanTotal = COST_CODES.reduce((sum, c) => sum + calcBdr(c, m.key, 'plan', d), 0);
 
