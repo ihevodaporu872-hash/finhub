@@ -1,5 +1,5 @@
 export type SectionCode = 'operating' | 'investing' | 'financing';
-export type RowType = 'income' | 'expense' | 'overhead' | 'net_cash_flow';
+export type RowType = 'income' | 'expense' | 'overhead' | 'net_cash_flow' | 'balance_open' | 'balance_close';
 export type EntryType = 'plan' | 'fact';
 
 export interface BddsCategory {
@@ -50,6 +50,7 @@ export interface BddsTableRow {
   isCalculated?: boolean;
   isExpandable?: boolean;
   isChild?: boolean;
+  isBalance?: boolean;
   categoryId?: string;
   rowType?: RowType;
   month_1?: number;

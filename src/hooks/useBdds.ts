@@ -10,6 +10,17 @@ import type { BdrSubType } from '../types/bdr';
 import type { YearMonthSlot } from '../utils/constants';
 import { calculateNetCashFlow, calculateRowTotal } from '../utils/calculations';
 
+// Имена категорий для РП-зеркалирования
+const RP_INCOME_NAME = 'Оплата по распред. письмам (РП)';
+const RP_EXPENSE_NAME = 'Субподряд: оплата по РП';
+
+// Имена категорий для разделения по типам счетов
+const OBS_INCOME_NAME = 'Поступления от Заказчика на ОБС';
+const BALANCE_OPEN_RS_NAME = 'Остаток на расчётных счетах (Свободный кэш)';
+const BALANCE_OPEN_OBS_NAME = 'Остаток на ОБС (Заблокированный/Целевой кэш)';
+const BALANCE_CLOSE_RS_NAME = 'Остаток на расчётных счетах на конец (Свободный кэш)';
+const BALANCE_CLOSE_OBS_NAME = 'Остаток на ОБС на конец (Заблокированный/Целевой кэш)';
+
 interface IUseBddsResult {
   sections: BddsSection[];
   yearSections: Map<number, BddsSection[]>;
@@ -21,6 +32,8 @@ interface IUseBddsResult {
   toggleParent: (categoryId: string) => void;
   updateFactEntry: (categoryId: string, month: number, amount: number) => void;
   saveAll: () => Promise<void>;
+  /** Данные ликвидности для дашборда (текущий месяц, план+факт) */
+  liquidity: { rsBalance: number; obsBalance: number; rsFact: number; obsFact: number };
 }
 
 export function useBdds(yearFrom: number, yearTo: number, projectId: string | null = null): IUseBddsResult {
@@ -35,10 +48,29 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
 
   const yearMonthSlots = useMemo(() => buildYearMonthSlots(yearFrom, yearTo), [yearFrom, yearTo]);
 
-  // Для обратной совместимости: sections = yearSections первого (единственного) года
   const sections = useMemo(() => {
     return yearSections.get(yearFrom) ?? [];
   }, [yearSections, yearFrom]);
+
+  // Ликвидность: из последнего месяца balance_close
+  const liquidity = useMemo(() => {
+    const secs = yearSections.get(yearTo) ?? [];
+    const balClose = secs.find((s) => s.sectionCode === 'operating')
+      ?.rows.find((r) => r.rowType === 'balance_close');
+    if (!balClose?.children) return { rsBalance: 0, obsBalance: 0, rsFact: 0, obsFact: 0 };
+
+    const rsChild = balClose.children.find((c) => c.name === BALANCE_CLOSE_RS_NAME);
+    const obsChild = balClose.children.find((c) => c.name === BALANCE_CLOSE_OBS_NAME);
+
+    // Берём последний месяц с данными (или декабрь)
+    const lastMonth = 12;
+    return {
+      rsBalance: rsChild?.months[lastMonth] || 0,
+      obsBalance: obsChild?.months[lastMonth] || 0,
+      rsFact: rsChild?.factMonths[lastMonth] || 0,
+      obsFact: obsChild?.factMonths[lastMonth] || 0,
+    };
+  }, [yearSections, yearTo]);
 
   const toggleParent = useCallback((categoryId: string) => {
     setExpandedParents((prev) => {
@@ -59,8 +91,33 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
       factMap: Map<string, MonthValues>,
       incomeTotals: MonthValues
     ): BddsSection[] => {
-      return SECTION_ORDER.map((sectionCode) => {
-        const sectionCategories = categories
+      // --- РП-зеркалирование ---
+      const rpIncomeCat = categories.find((c) => c.name === RP_INCOME_NAME);
+      const rpExpenseCat = categories.find((c) => c.name === RP_EXPENSE_NAME);
+      if (rpIncomeCat && rpExpenseCat) {
+        const rpPlan = planMap.get(rpIncomeCat.id) || {};
+        const rpFact = factMap.get(rpIncomeCat.id) || {};
+        // Зеркалируем в расходную строку
+        if (!planMap.has(rpExpenseCat.id)) planMap.set(rpExpenseCat.id, {});
+        if (!factMap.has(rpExpenseCat.id)) factMap.set(rpExpenseCat.id, {});
+        const expPlan = planMap.get(rpExpenseCat.id)!;
+        const expFact = factMap.get(rpExpenseCat.id)!;
+        for (const m of MONTHS) {
+          if (rpPlan[m.key]) expPlan[m.key] = rpPlan[m.key];
+          if (rpFact[m.key]) expFact[m.key] = rpFact[m.key];
+        }
+      }
+
+      // --- Разделяем категории: balance vs обычные ---
+      const balanceOpenCats = categories.filter((c) => c.row_type === 'balance_open');
+      const balanceCloseCats = categories.filter((c) => c.row_type === 'balance_close');
+      const regularCats = categories.filter(
+        (c) => c.row_type !== 'balance_open' && c.row_type !== 'balance_close'
+      );
+
+      // --- Построение обычных секций ---
+      const builtSections = SECTION_ORDER.map((sectionCode) => {
+        const sectionCategories = regularCats
           .filter((c) => c.section_code === sectionCode)
           .sort((a, b) => a.sort_order - b.sort_order);
 
@@ -81,7 +138,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           if (catChildren.length > 0) {
             children = catChildren.map((child, idx) => {
               let childPlan = planMap.get(child.id) || {};
-              // Автозаполнение плана первой дочерней строки доходов из bdds_income_entries
               if (sectionCode === 'operating' && cat.row_type === 'income' && idx === 0) {
                 childPlan = { ...incomeTotals };
               }
@@ -154,6 +210,124 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           rows,
         };
       });
+
+      // --- Построение balance-строк ---
+      const buildBalanceRow = (
+        cats: BddsCategory[],
+        rowType: 'balance_open' | 'balance_close'
+      ): BddsRow | null => {
+        const parentCat = cats.find((c) => !c.parent_id);
+        if (!parentCat) return null;
+
+        const childCats = cats.filter((c) => c.parent_id === parentCat.id);
+        const children: BddsRow[] = childCats.map((child) => ({
+          categoryId: child.id,
+          name: child.name,
+          rowType,
+          isCalculated: false,
+          months: planMap.get(child.id) || {},
+          total: calculateRowTotal(planMap.get(child.id) || {}),
+          factMonths: factMap.get(child.id) || {},
+          factTotal: calculateRowTotal(factMap.get(child.id) || {}),
+          parentId: child.parent_id,
+        }));
+
+        const sumPlan: MonthValues = {};
+        const sumFact: MonthValues = {};
+        for (const m of MONTHS) {
+          sumPlan[m.key] = children.reduce((s, ch) => s + (ch.months[m.key] || 0), 0);
+          sumFact[m.key] = children.reduce((s, ch) => s + (ch.factMonths[m.key] || 0), 0);
+        }
+
+        return {
+          categoryId: parentCat.id,
+          name: parentCat.name,
+          rowType,
+          isCalculated: true,
+          months: sumPlan,
+          total: calculateRowTotal(sumPlan),
+          factMonths: sumFact,
+          factTotal: calculateRowTotal(sumFact),
+          parentId: null,
+          children,
+        };
+      };
+
+      const balOpenRow = buildBalanceRow(balanceOpenCats, 'balance_open');
+      const balCloseRow = buildBalanceRow(balanceCloseCats, 'balance_close');
+
+      // --- Расчёт Остатка на конец ---
+      // Остаток на конец[M] = Остаток на начало[M] + ΣЧДПвсех секций[M]
+      if (balOpenRow && balCloseRow) {
+        // Суммируем ЧДП всех секций
+        const totalNcfPlan: MonthValues = {};
+        const totalNcfFact: MonthValues = {};
+        for (const sec of builtSections) {
+          const ncf = sec.rows.find((r) => r.rowType === 'net_cash_flow');
+          if (ncf) {
+            for (const m of MONTHS) {
+              totalNcfPlan[m.key] = (totalNcfPlan[m.key] || 0) + (ncf.months[m.key] || 0);
+              totalNcfFact[m.key] = (totalNcfFact[m.key] || 0) + (ncf.factMonths[m.key] || 0);
+            }
+          }
+        }
+
+        // Расчёт итогового остатка на конец
+        for (const m of MONTHS) {
+          balCloseRow.months[m.key] = (balOpenRow.months[m.key] || 0) + (totalNcfPlan[m.key] || 0);
+          balCloseRow.factMonths[m.key] = (balOpenRow.factMonths[m.key] || 0) + (totalNcfFact[m.key] || 0);
+        }
+        balCloseRow.total = calculateRowTotal(balCloseRow.months);
+        balCloseRow.factTotal = calculateRowTotal(balCloseRow.factMonths);
+
+        // Расчёт подстрок: ОБС и р/с
+        // ОБС: поступления на ОБС минус (пока нет расходов с ОБС, = поступления ОБС)
+        const obsCat = categories.find((c) => c.name === OBS_INCOME_NAME);
+        const obsIncomePlan = obsCat ? (planMap.get(obsCat.id) || {}) : {};
+        const obsIncomeFact = obsCat ? (factMap.get(obsCat.id) || {}) : {};
+
+        if (balOpenRow.children && balCloseRow.children) {
+          const openRs = balOpenRow.children.find((c) => c.name === BALANCE_OPEN_RS_NAME);
+          const openObs = balOpenRow.children.find((c) => c.name === BALANCE_OPEN_OBS_NAME);
+          const closeRs = balCloseRow.children.find((c) => c.name === BALANCE_CLOSE_RS_NAME);
+          const closeObs = balCloseRow.children.find((c) => c.name === BALANCE_CLOSE_OBS_NAME);
+
+          if (openObs && closeObs) {
+            for (const m of MONTHS) {
+              // ОБС конец = ОБС начало + поступления ОБС
+              closeObs.months[m.key] = (openObs.months[m.key] || 0) + (obsIncomePlan[m.key] || 0);
+              closeObs.factMonths[m.key] = (openObs.factMonths[m.key] || 0) + (obsIncomeFact[m.key] || 0);
+            }
+            closeObs.total = calculateRowTotal(closeObs.months);
+            closeObs.factTotal = calculateRowTotal(closeObs.factMonths);
+          }
+
+          if (openRs && closeRs) {
+            for (const m of MONTHS) {
+              // р/с конец = Общий остаток конец — ОБС конец
+              const obsEnd = closeObs?.months[m.key] || 0;
+              const obsEndFact = closeObs?.factMonths[m.key] || 0;
+              closeRs.months[m.key] = (balCloseRow.months[m.key] || 0) - obsEnd;
+              closeRs.factMonths[m.key] = (balCloseRow.factMonths[m.key] || 0) - obsEndFact;
+            }
+            closeRs.total = calculateRowTotal(closeRs.months);
+            closeRs.factTotal = calculateRowTotal(closeRs.factMonths);
+          }
+        }
+      }
+
+      // Вставляем balance-строки в operating секцию
+      const operatingSection = builtSections.find((s) => s.sectionCode === 'operating');
+      if (operatingSection) {
+        if (balOpenRow) {
+          operatingSection.rows.unshift(balOpenRow);
+        }
+        if (balCloseRow) {
+          operatingSection.rows.push(balCloseRow);
+        }
+      }
+
+      return builtSections;
     },
     []
   );
@@ -173,7 +347,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
 
       const newYearSections = new Map<number, BddsSection[]>();
 
-      // Маппинг имя БДДС-категории → category_id
       const nameToId = new Map<string, string>();
       for (const cat of categories) {
         nameToId.set(cat.name, cat.id);
@@ -203,7 +376,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           m[entry.month] = (m[entry.month] || 0) + Number(entry.amount);
         }
 
-        // Автозаполнение факта из bdds_receipt_details
         for (const [catId, months] of receiptFacts) {
           if (!factMap.has(catId)) factMap.set(catId, {});
           const m = factMap.get(catId)!;
@@ -212,7 +384,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           }
         }
 
-        // Автозаполнение БДДС плана из bdr_sub_entries (Сумма, сдвиг +1 месяц)
         for (const [subType, months] of Object.entries(bddsTotals)) {
           const bddsName = BDR_SUB_TO_BDDS_NAME[subType as BdrSubType];
           if (!bddsName) continue;
@@ -247,7 +418,6 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
 
       setYearSections((prev) => {
         const next = new Map(prev);
-        // Редактирование только в single-year режиме
         const secs = next.get(yearFrom);
         if (!secs) return prev;
 
@@ -258,6 +428,9 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           if (!hasCategory) return section;
 
           const updatedRows = section.rows.map((row) => {
+            // Не редактируем balance-строки напрямую (кроме подстрок начала)
+            if (row.rowType === 'balance_close') return row;
+
             if (row.children) {
               const hasChild = row.children.some((ch) => ch.categoryId === categoryId);
               if (hasChild) {
@@ -298,15 +471,28 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
             };
           });
 
-          const ncfRow = updatedRows.find((r) => r.isCalculated && !r.children);
+          // Пересчитываем NCF
+          const ncfRow = updatedRows.find((r) => r.rowType === 'net_cash_flow');
           if (ncfRow) {
-            const dataRows = updatedRows.filter((r) => !r.isCalculated || r.children);
+            const dataRows = updatedRows.filter(
+              (r) => (r.rowType !== 'net_cash_flow' && r.rowType !== 'balance_open' && r.rowType !== 'balance_close') || r.children
+            ).filter((r) => r.rowType === 'income' || r.rowType === 'expense' || r.rowType === 'overhead');
             const factDataRows: BddsRow[] = dataRows.map((r) => ({
               ...r,
               months: r.factMonths,
             }));
             ncfRow.factMonths = calculateNetCashFlow(section.sectionCode, factDataRows);
             ncfRow.factTotal = calculateRowTotal(ncfRow.factMonths);
+          }
+
+          // Пересчитываем balance_close после NCF
+          const balOpen = updatedRows.find((r) => r.rowType === 'balance_open');
+          const balClose = updatedRows.find((r) => r.rowType === 'balance_close');
+          if (balOpen && balClose && ncfRow) {
+            for (const m of MONTHS) {
+              balClose.factMonths[m.key] = (balOpen.factMonths[m.key] || 0) + (ncfRow.factMonths[m.key] || 0);
+            }
+            balClose.factTotal = calculateRowTotal(balClose.factMonths);
           }
 
           return { ...section, rows: [...updatedRows] };
@@ -334,6 +520,9 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
       const secs = yearSections.get(yearFrom) ?? [];
       for (const section of secs) {
         for (const row of section.rows) {
+          // Пропускаем balance_close (вычисляемый)
+          if (row.rowType === 'balance_close') continue;
+
           const rowsToSave = row.children ? row.children : (row.isCalculated ? [] : [row]);
           for (const r of rowsToSave) {
             if (r.isCalculated) continue;
@@ -362,5 +551,5 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
     }
   }, [yearSections, yearFrom, projectId]);
 
-  return { sections, yearSections, yearMonthSlots, loading, saving, error, expandedParents, toggleParent, updateFactEntry, saveAll };
+  return { sections, yearSections, yearMonthSlots, loading, saving, error, expandedParents, toggleParent, updateFactEntry, saveAll, liquidity };
 }

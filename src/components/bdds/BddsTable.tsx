@@ -19,151 +19,114 @@ interface IProps {
   onNavigateReceipts?: (categoryId: string) => void;
 }
 
+const buildRowFromBddsRow = (
+  row: { categoryId: string; name: string; rowType: string; isCalculated: boolean; months: Record<number, number>; factMonths: Record<number, number>; total: number; factTotal: number },
+  sectionCode: string,
+  opts: { isChild?: boolean; isExpandable?: boolean; isBalance?: boolean },
+  slots?: YearMonthSlot[],
+  yearSections?: Map<number, BddsSection[]>,
+  rowIndex?: number,
+  childIndex?: number,
+): BddsTableRow => {
+  const tableRow: BddsTableRow = {
+    key: row.categoryId,
+    name: row.name,
+    categoryId: row.categoryId,
+    isCalculated: row.isCalculated,
+    isExpandable: opts.isExpandable,
+    isChild: opts.isChild,
+    isBalance: opts.isBalance,
+    rowType: row.rowType as BddsTableRow['rowType'],
+    sectionCode: sectionCode as BddsTableRow['sectionCode'],
+    plan_total: row.total,
+    fact_total: row.factTotal,
+  };
+
+  if (slots && yearSections) {
+    // Multi-year
+    let planTotal = 0;
+    let factTotal = 0;
+    for (const slot of slots) {
+      const ySections = yearSections.get(slot.year);
+      const ySection = ySections?.find((s) => s.sectionCode === sectionCode);
+      let pv = 0;
+      let fv = 0;
+      if (ySection && rowIndex !== undefined) {
+        const yRow = ySection.rows[rowIndex];
+        if (opts.isChild && childIndex !== undefined) {
+          const yChild = yRow?.children?.[childIndex];
+          pv = yChild?.months[slot.month] || 0;
+          fv = yChild?.factMonths[slot.month] || 0;
+        } else {
+          pv = yRow?.months[slot.month] || 0;
+          fv = yRow?.factMonths[slot.month] || 0;
+        }
+      }
+      tableRow[`plan_month_${slot.dataKey}`] = pv;
+      tableRow[`fact_month_${slot.dataKey}`] = fv;
+      planTotal += pv;
+      factTotal += fv;
+    }
+    tableRow.plan_total = planTotal;
+    tableRow.fact_total = factTotal;
+  } else {
+    // Single year
+    for (const m of MONTHS) {
+      tableRow[`plan_month_${m.key}`] = row.months[m.key] || 0;
+      tableRow[`fact_month_${m.key}`] = row.factMonths[m.key] || 0;
+    }
+  }
+
+  return tableRow;
+};
+
 export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedParents, onToggleParent, onUpdateFact, onNavigateReceipts }: IProps) => {
   const isMultiYear = yearMonthSlots ? yearMonthSlots.length > 12 : false;
 
   const dataSource = useMemo((): BddsTableRow[] => {
-    if (!isMultiYear || !yearSections || !yearMonthSlots) {
-      // Single year — старая логика
-      const rows: BddsTableRow[] = [];
-      for (const section of sections) {
-        rows.push({
-          key: `header-${section.sectionCode}`,
-          name: section.sectionName.toUpperCase(),
-          isHeader: true,
-        });
-
-        for (const row of section.rows) {
-          const hasChildren = row.children && row.children.length > 0;
-          const tableRow: BddsTableRow = {
-            key: row.categoryId,
-            name: row.name,
-            categoryId: row.categoryId,
-            isCalculated: row.isCalculated,
-            isExpandable: hasChildren,
-            rowType: row.rowType,
-            sectionCode: section.sectionCode,
-            plan_total: row.total,
-            fact_total: row.factTotal,
-          };
-
-          for (const m of MONTHS) {
-            tableRow[`plan_month_${m.key}`] = row.months[m.key] || 0;
-            tableRow[`fact_month_${m.key}`] = row.factMonths[m.key] || 0;
-          }
-
-          rows.push(tableRow);
-
-          if (hasChildren && expandedParents.has(row.categoryId)) {
-            for (const child of row.children!) {
-              const childRow: BddsTableRow = {
-                key: child.categoryId,
-                name: child.name,
-                categoryId: child.categoryId,
-                isCalculated: child.isCalculated,
-                isChild: true,
-                rowType: child.rowType,
-                sectionCode: section.sectionCode,
-                plan_total: child.total,
-                fact_total: child.factTotal,
-              };
-
-              for (const m of MONTHS) {
-                childRow[`plan_month_${m.key}`] = child.months[m.key] || 0;
-                childRow[`fact_month_${m.key}`] = child.factMonths[m.key] || 0;
-              }
-
-              rows.push(childRow);
-            }
-          }
-        }
-      }
-      return rows;
-    }
-
-    // Multi-year: merge per-year sections into rows with year-month dataKeys
     const rows: BddsTableRow[] = [];
-    const firstYear = [...yearSections.keys()].sort((a, b) => a - b)[0];
-    const baseSections = yearSections.get(firstYear) ?? [];
 
-    for (const section of baseSections) {
-      rows.push({
-        key: `header-${section.sectionCode}`,
-        name: section.sectionName.toUpperCase(),
-        isHeader: true,
-      });
-
+    const addRowsForSection = (section: BddsSection) => {
       for (let ri = 0; ri < section.rows.length; ri++) {
         const row = section.rows[ri];
         const hasChildren = row.children && row.children.length > 0;
-        const tableRow: BddsTableRow = {
-          key: row.categoryId,
-          name: row.name,
-          categoryId: row.categoryId,
-          isCalculated: row.isCalculated,
-          isExpandable: hasChildren,
-          rowType: row.rowType,
-          sectionCode: section.sectionCode,
-          plan_total: 0,
-          fact_total: 0,
-        };
+        const isBalance = row.rowType === 'balance_open' || row.rowType === 'balance_close';
 
-        let planTotal = 0;
-        let factTotal = 0;
-
-        for (const slot of yearMonthSlots) {
-          const ySections = yearSections.get(slot.year);
-          const ySection = ySections?.find((s) => s.sectionCode === section.sectionCode);
-          const yRow = ySection?.rows[ri];
-          const pv = yRow?.months[slot.month] || 0;
-          const fv = yRow?.factMonths[slot.month] || 0;
-          tableRow[`plan_month_${slot.dataKey}`] = pv;
-          tableRow[`fact_month_${slot.dataKey}`] = fv;
-          planTotal += pv;
-          factTotal += fv;
-        }
-
-        tableRow.plan_total = planTotal;
-        tableRow.fact_total = factTotal;
+        const tableRow = buildRowFromBddsRow(
+          row,
+          section.sectionCode,
+          { isExpandable: hasChildren, isBalance },
+          isMultiYear ? yearMonthSlots : undefined,
+          isMultiYear ? yearSections : undefined,
+          ri,
+        );
         rows.push(tableRow);
 
         if (hasChildren && expandedParents.has(row.categoryId)) {
           for (let ci = 0; ci < row.children!.length; ci++) {
             const child = row.children![ci];
-            const childRow: BddsTableRow = {
-              key: child.categoryId,
-              name: child.name,
-              categoryId: child.categoryId,
-              isCalculated: child.isCalculated,
-              isChild: true,
-              rowType: child.rowType,
-              sectionCode: section.sectionCode,
-              plan_total: 0,
-              fact_total: 0,
-            };
-
-            let cPlanTotal = 0;
-            let cFactTotal = 0;
-
-            for (const slot of yearMonthSlots) {
-              const ySections = yearSections.get(slot.year);
-              const ySection = ySections?.find((s) => s.sectionCode === section.sectionCode);
-              const yRow = ySection?.rows[ri];
-              const yChild = yRow?.children?.[ci];
-              const pv = yChild?.months[slot.month] || 0;
-              const fv = yChild?.factMonths[slot.month] || 0;
-              childRow[`plan_month_${slot.dataKey}`] = pv;
-              childRow[`fact_month_${slot.dataKey}`] = fv;
-              cPlanTotal += pv;
-              cFactTotal += fv;
-            }
-
-            childRow.plan_total = cPlanTotal;
-            childRow.fact_total = cFactTotal;
+            const childRow = buildRowFromBddsRow(
+              child,
+              section.sectionCode,
+              { isChild: true, isBalance },
+              isMultiYear ? yearMonthSlots : undefined,
+              isMultiYear ? yearSections : undefined,
+              ri,
+              ci,
+            );
             rows.push(childRow);
           }
         }
       }
+    };
+
+    for (const section of sections) {
+      rows.push({
+        key: `header-${section.sectionCode}`,
+        name: section.sectionName.toUpperCase(),
+        isHeader: true,
+      });
+      addRowsForSection(section);
     }
 
     return rows;
@@ -183,9 +146,10 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
           }
           if (record.isExpandable && record.categoryId) {
             const expanded = expandedParents.has(record.categoryId);
+            const isBalance = record.isBalance;
             return (
               <span
-                className="bdds-clickable-name bdds-semibold-name"
+                className={`bdds-clickable-name ${isBalance ? 'bdds-balance-name' : 'bdds-semibold-name'}`}
                 onClick={() => onToggleParent(record.categoryId!)}
               >
                 {expanded ? <DownOutlined /> : <RightOutlined />}
@@ -204,7 +168,7 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
                 </span>
               );
             }
-            return <span className="bdds-child-indent">{text}</span>;
+            return <span className={`bdds-child-indent ${record.isBalance ? 'bdds-balance-child' : ''}`}>{text}</span>;
           }
           return text;
         },
@@ -218,7 +182,7 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
     const totalCols = buildTotalColumns();
 
     return [...nameCol, ...monthCols, ...totalCols];
-  }, [onUpdateFact, expandedParents, onToggleParent, isMultiYear, yearMonthSlots]);
+  }, [onUpdateFact, expandedParents, onToggleParent, isMultiYear, yearMonthSlots, onNavigateReceipts]);
 
   return (
     <Table
@@ -231,6 +195,8 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
       sticky
       rowClassName={(record) => {
         if (record.isHeader) return 'bdds-section-header';
+        if (record.isBalance && !record.isChild) return 'bdds-balance-row';
+        if (record.isBalance && record.isChild) return 'bdds-balance-child-row';
         if (record.isCalculated && !record.isExpandable) return 'bdds-calculated-row';
         if (record.isExpandable) return 'bdds-expandable-row';
         if (record.isChild) return 'bdds-child-row';
@@ -239,4 +205,4 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
       }}
     />
   );
-}
+};

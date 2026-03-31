@@ -2,8 +2,8 @@ import type { FC } from 'react';
 import { Empty, Spin } from 'antd';
 import { BddsKpiCards } from './BddsKpiCards';
 import { BddsPlanFactChart } from './BddsPlanFactChart';
-
 import { BddsNcfChart } from './BddsNcfChart';
+import { BddsLiquidityWidget } from './BddsLiquidityWidget';
 import type { IBddsDashboardData } from '../../../types/dashboard';
 
 interface IProps {
@@ -17,6 +17,7 @@ export const BddsDashboard: FC<IProps> = ({ data, loading }) => {
 
   return (
     <div>
+      <BddsLiquidityWidget liquidity={data.liquidity} />
       <BddsKpiCards data={data} />
       <BddsPlanFactChart data={data} />
       <BddsNcfChart data={data} />

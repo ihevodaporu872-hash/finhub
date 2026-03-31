@@ -469,6 +469,55 @@ body {
   text-decoration: underline;
 }
 
+/* БДДС — строки остатков (balance) */
+.bdds-balance-row td {
+  background-color: #fffbe6 !important;
+  font-weight: 700;
+  border-top: 2px solid #faad14 !important;
+  border-bottom: 2px solid #faad14 !important;
+}
+
+.bdds-balance-child-row td {
+  background-color: #fffbe6 !important;
+  font-size: 12px;
+}
+
+.bdds-balance-name {
+  font-weight: 700;
+  color: #d48806;
+}
+
+.bdds-balance-child {
+  padding-left: 24px;
+  color: #8c6d1f;
+}
+
+/* Карточки ликвидности */
+.bdds-liquidity-card {
+  border-radius: 8px;
+  transition: box-shadow 0.2s;
+}
+
+.bdds-liquidity-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.bdds-liquidity-warning {
+  border: 2px solid #ff4d4f !important;
+  animation: bdds-pulse-warning 2s infinite;
+}
+
+.bdds-liquidity-plan-hint {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-top: 4px;
+}
+
+@keyframes bdds-pulse-warning {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4); }
+  50% { box-shadow: 0 0 12px 4px rgba(255, 77, 79, 0.2); }
+}
+
 /* Тулбар поступлений */
 .receipt-toolbar {
   margin-bottom: 16px;

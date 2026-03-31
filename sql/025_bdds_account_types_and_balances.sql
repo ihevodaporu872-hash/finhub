@@ -1,0 +1,74 @@
+-- =============================================================
+-- 025: Разделение денежных потоков по типам счетов (р/с vs ОБС)
+-- + строки остатков (Остаток на начало / на конец)
+-- =============================================================
+
+-- 1) Удаляем старые дочерние строки доходов (заменяем на новые 5 строк)
+DELETE FROM bdds_categories
+WHERE parent_id = (
+  SELECT id FROM bdds_categories
+  WHERE name = 'Поступление средств от текущей деятельности'
+    AND section_code = 'operating'
+    AND row_type = 'income'
+);
+
+-- 2) Вставляем новые 5 дочерних строк доходов
+INSERT INTO bdds_categories (section_code, row_type, name, sort_order, is_calculated, parent_id)
+SELECT 'operating', 'income', child.name, child.sort_order, false, parent.id
+FROM bdds_categories parent,
+(VALUES
+  ('Авансы от Заказчика (на обычный р/с)', 1),
+  ('Поступления от Заказчика на ОБС', 2),
+  ('Оплата от Заказчика за выполненные работы (на обычный р/с)', 3),
+  ('Оплата по распред. письмам (РП)', 4),
+  ('Возврат гарантийных удержаний от Заказчика', 5)
+) AS child(name, sort_order)
+WHERE parent.name = 'Поступление средств от текущей деятельности'
+  AND parent.section_code = 'operating'
+  AND parent.row_type = 'income';
+
+-- 3) Добавляем строку «Субподряд: оплата по РП» в расходы
+INSERT INTO bdds_categories (section_code, row_type, name, sort_order, is_calculated, parent_id)
+SELECT 'operating', 'expense', 'Субподряд: оплата по РП', 6, false, parent.id
+FROM bdds_categories parent
+WHERE parent.name = 'Выплата средств по текущей деятельности'
+  AND parent.section_code = 'operating'
+  AND parent.row_type = 'expense'
+ON CONFLICT DO NOTHING;
+
+-- 4) Расширяем CHECK constraint на row_type, добавляя balance_open и balance_close
+ALTER TABLE bdds_categories DROP CONSTRAINT IF EXISTS bdds_categories_row_type_check;
+ALTER TABLE bdds_categories ADD CONSTRAINT bdds_categories_row_type_check
+  CHECK (row_type IN ('income', 'expense', 'overhead', 'net_cash_flow', 'balance_open', 'balance_close'));
+
+-- 4a) Остаток на начало периода (раскрываемая)
+INSERT INTO bdds_categories (section_code, row_type, name, sort_order, is_calculated, calculation_formula)
+VALUES ('operating', 'balance_open', 'Остаток денежных средств на начало периода', 0, true, 'sum_children')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO bdds_categories (section_code, row_type, name, sort_order, is_calculated, parent_id)
+SELECT 'operating', 'balance_open', child.name, child.sort_order, false, parent.id
+FROM bdds_categories parent,
+(VALUES
+  ('Остаток на расчётных счетах (Свободный кэш)', 1),
+  ('Остаток на ОБС (Заблокированный/Целевой кэш)', 2)
+) AS child(name, sort_order)
+WHERE parent.name = 'Остаток денежных средств на начало периода'
+  AND parent.section_code = 'operating'
+  AND parent.row_type = 'balance_open';
+
+-- 4b) Остаток на конец периода (раскрываемая)
+INSERT INTO bdds_categories (section_code, row_type, name, sort_order, is_calculated, calculation_formula)
+VALUES ('operating', 'balance_close', 'Остаток денежных средств на конец периода', 999, true, 'sum_children')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO bdds_categories (section_code, row_type, name, sort_order, is_calculated, parent_id)
+SELECT 'operating', 'balance_close', child.name, child.sort_order, false, parent.id
+FROM bdds_categories parent,
+(VALUES
+  ('Остаток на расчётных счетах на конец (Свободный кэш)', 1),
+  ('Остаток на ОБС на конец (Заблокированный/Целевой кэш)', 2)
+) AS child(name, sort_order)
+WHERE parent.name = 'Остаток денежных средств на конец периода'
+  AND parent.section_code = 'operating'
+  AND parent.row_type = 'balance_close';

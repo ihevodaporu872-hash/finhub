@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { Card, Spin, Alert, message } from 'antd';
+import { Card, Spin, Alert, message, Row, Col } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useBdds } from '../../hooks/useBdds';
 import { BddsToolbar } from './BddsToolbar';
 import { BddsTable } from './BddsTable';
+import { BddsLiquidityCards } from './BddsLiquidityCards';
 import type { Project } from '../../types/projects';
 
 const currentYear = new Date().getFullYear();
@@ -13,7 +14,7 @@ export const BddsPage = () => {
   const [yearFrom, setYearFrom] = useState(currentYear);
   const [yearTo, setYearTo] = useState(currentYear);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const { sections, yearSections, yearMonthSlots, loading, saving, error, expandedParents, toggleParent, updateFactEntry, saveAll } = useBdds(yearFrom, yearTo, selectedProjectId);
+  const { sections, yearSections, yearMonthSlots, loading, saving, error, expandedParents, toggleParent, updateFactEntry, saveAll, liquidity } = useBdds(yearFrom, yearTo, selectedProjectId);
 
   const isMultiYear = yearFrom !== yearTo;
   const isReadOnly = !selectedProjectId || isMultiYear;
@@ -71,6 +72,13 @@ export const BddsPage = () => {
         selectedProjectId={selectedProjectId}
         onProjectChange={handleProjectChange}
       />
+      {!loading && (
+        <Row gutter={[16, 16]} className="mb-16">
+          <Col xs={24}>
+            <BddsLiquidityCards liquidity={liquidity} />
+          </Col>
+        </Row>
+      )}
       {loading ? (
         <div className="page-center">
           <Spin size="large" />

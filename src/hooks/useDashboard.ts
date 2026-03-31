@@ -471,6 +471,24 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
       }
     }
 
+    // Ликвидность: ищем balance_close подстроки в последнем году
+    let rsBalance = 0;
+    let obsBalance = 0;
+    const lastYear = bddsYears[bddsYears.length - 1];
+    if (lastYear) {
+      const balCloseParent = lastYear.categories.find(
+        (c) => c.row_type === 'balance_close' && !c.parent_id
+      );
+      if (balCloseParent) {
+        const balChildren = lastYear.categories.filter((c) => c.parent_id === balCloseParent.id);
+        for (const ch of balChildren) {
+          const val = getVal(lastYear.factMap, ch.id, 12) || getVal(lastYear.planMap, ch.id, 12);
+          if (ch.name.includes('ОБС')) obsBalance = val;
+          else rsBalance = val;
+        }
+      }
+    }
+
     return {
       planFactIncome, factIncomeLine, factIncomeByProject, planIncomeLine, ncfBySection,
       kpis: {
@@ -478,6 +496,7 @@ export function useDashboard(yearFrom: number, yearTo: number, projectId: string
         ncfTotal: ncfOp + ncfInv + ncfFin,
         planIncomeTotal: planIncTotal, factIncomeTotal: factIncTotal,
       },
+      liquidity: { rsBalance, obsBalance },
     };
   }, [bddsYears, projects, loading, multiYear, shouldShowMonth]);
 

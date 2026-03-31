@@ -92,4 +92,8 @@ export interface IBddsDashboardData {
     planIncomeTotal: number;
     factIncomeTotal: number;
   };
+  liquidity: {
+    rsBalance: number;
+    obsBalance: number;
+  };
 }
