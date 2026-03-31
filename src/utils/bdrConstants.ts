@@ -22,7 +22,7 @@ export const BDR_ROWS: BdrRowDef[] = [
   { code: 'labor_cost_ratio', name: 'Доля ФОТ в себестоимости (Labor Cost Ratio)', isPercent: true, isCalculated: true },
   { code: 'marginal_profit', name: 'Маржинальная прибыль', isCalculated: true, isKeyMetric: true },
   { code: 'gross_margin', name: 'Маржинальная (Валовая) рентабельность (Gross Margin)', isPercent: true, isCalculated: true, isKeyMetric: true },
-  { code: 'fixed_expenses', name: 'Постоянные коммерческие и управленческие расходы (в т.ч. Амортизация) (ОФЗ)', isPlanCalculated: true, isClickable: true, subType: 'fixed_expenses' },
+  { code: 'fixed_expenses', name: 'Постоянные коммерческие и управленческие расходы (в т.ч. Амортизация) (ОФЗ)', isClickable: true, subType: 'fixed_expenses' },
   { code: 'operating_profit', name: 'Операционная прибыль', isCalculated: true, isKeyMetric: true },
   { code: 'operating_profit_pct', name: 'В % к общей прибыли', isPercent: true, isCalculated: true },
   { code: 'other_income_expense', name: 'Прочие доходы (расходы)' },

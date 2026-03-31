@@ -236,10 +236,10 @@ export function useBdr(yearFrom: number, yearTo: number, projectId: string | nul
             return (calcMonthVal('marginal_profit', month, type) / rev) * 100;
           }
           case 'fixed_expenses':
-            if (type === 'plan') return calcMonthVal('revenue_smr', month, 'plan') * 0.2;
-            if (fixedExpensesFactMonthly) return fixedExpensesFactMonthly;
-            if (ySub['fixed_expenses']) return ySub['fixed_expenses']?.[month] || 0;
-            return getVal('fixed_expenses', month, 'fact');
+            if (type === 'fact' && ySub['fixed_expenses']) {
+              return ySub['fixed_expenses']?.[month] || 0;
+            }
+            return getVal('fixed_expenses', month, type);
           case 'operating_profit':
             return calcMonthVal('marginal_profit', month, type) - calcMonthVal('fixed_expenses', month, type);
           case 'operating_profit_pct': {
