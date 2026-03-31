@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Card, Spin, Alert, Tabs, Button } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Card, Spin, Alert, Tabs, Button, message, Popconfirm } from 'antd';
+import { ArrowLeftOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useScheduleV2 } from '../../../hooks/useScheduleV2';
 import { ScheduleV2Toolbar } from './ScheduleV2Toolbar';
@@ -22,7 +22,18 @@ export const ScheduleV2Page = () => {
     monthKeys,
     loading,
     error,
+    fillBdds,
+    filling,
   } = useScheduleV2(yearFrom, yearTo);
+
+  const handleFillBdds = useCallback(async () => {
+    try {
+      await fillBdds();
+      message.success('БДДС и БДР заполнены из Плановый график 2.0');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Ошибка заполнения');
+    }
+  }, [fillBdds]);
 
   const handleYearFromChange = useCallback((y: number) => {
     setYearFrom(y);
@@ -83,6 +94,23 @@ export const ScheduleV2Page = () => {
           />
           Плановый график 2.0 — {projectName || 'Загрузка...'}
         </span>
+      }
+      extra={
+        <Popconfirm
+          title="Заполнить БДДС и БДР?"
+          description={`Данные из режима «${costGroup === 'commercial' ? 'Коммерческие' : 'Прямые'}» будут записаны в БДДС и БДР. Старые данные по проекту будут перезаписаны.`}
+          onConfirm={handleFillBdds}
+          okText="Заполнить"
+          cancelText="Отмена"
+        >
+          <Button
+            type="primary"
+            icon={<UploadOutlined />}
+            loading={filling}
+          >
+            Заполнить БДДС/БДР
+          </Button>
+        </Popconfirm>
       }
     >
       <Tabs

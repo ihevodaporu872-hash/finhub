@@ -10,6 +10,8 @@ import type {
 import { FINANCE_ROW_LABELS } from '../types/scheduleV2';
 import * as scheduleV2Service from '../services/scheduleV2Service';
 import * as projectsService from '../services/projectsService';
+import * as bddsIncomeService from '../services/bddsIncomeService';
+import { getCategoryWorkType } from '../utils/scheduleV2Mapping';
 
 type CostGroup = 'direct' | 'commercial';
 
@@ -29,6 +31,8 @@ interface IUseScheduleV2Result {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  fillBdds: () => Promise<void>;
+  filling: boolean;
 }
 
 export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2Result {
@@ -339,6 +343,85 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     return Array.from(new Set([...monthKeys, ...financeMonths])).sort();
   }, [monthKeys, financeCalc]);
 
+  // === Заполнение БДДС/БДР из данных Плановый график 2.0 ===
+  const [filling, setFilling] = useState(false);
+
+  const fillBdds = useCallback(async () => {
+    if (!projectId) throw new Error('Проект не найден');
+    setFilling(true);
+    try {
+      // 1. Маппинг категорий → work_type_code, агрегация помесячных сумм
+      const smrByCodeMonth = new Map<string, Map<string, number>>();
+      const catIdToName = new Map<string, string>();
+      for (const cat of groupCategories) {
+        catIdToName.set(cat.id, cat.name);
+      }
+
+      for (const entry of filteredMonthly) {
+        if (!groupCatIds.has(entry.category_id)) continue;
+        const catName = catIdToName.get(entry.category_id);
+        if (!catName) continue;
+        const workType = getCategoryWorkType(catName);
+        if (!workType) continue;
+
+        if (!smrByCodeMonth.has(workType)) smrByCodeMonth.set(workType, new Map());
+        const monthMap = smrByCodeMonth.get(workType)!;
+        monthMap.set(entry.month_key, (monthMap.get(entry.month_key) || 0) + Number(entry.amount));
+      }
+
+      // 2. Собираем записи для upsert
+      const entries: Array<{
+        project_id: string;
+        work_type_code: string;
+        month_key: string;
+        amount: number;
+      }> = [];
+
+      // СМР по видам работ
+      for (const [workType, monthMap] of smrByCodeMonth) {
+        for (const [mk, amount] of monthMap) {
+          if (amount) entries.push({ project_id: projectId, work_type_code: workType, month_key: mk, amount });
+        }
+      }
+
+      // Финансовые строки из динамического расчёта
+      const financeCodes = [
+        'total_smr', 'advance_income', 'advance_offset',
+        'guarantee_retention', 'guarantee_return', 'total_income',
+      ] as const;
+
+      const financeFieldMap: Record<string, string> = {
+        total_smr: 'smr',
+        advance_income: 'advanceIncome',
+        advance_offset: 'advanceOffset',
+        guarantee_retention: 'guaranteeRetention',
+        guarantee_return: 'guaranteeReturn',
+        total_income: 'totalIncome',
+      };
+
+      for (const [mk, data] of Object.entries(financeCalc)) {
+        for (const code of financeCodes) {
+          const field = financeFieldMap[code] as keyof typeof data;
+          const val = data[field] as number;
+          if (val) {
+            entries.push({
+              project_id: projectId,
+              work_type_code: code,
+              month_key: mk,
+              amount: Math.round(val * 100) / 100,
+            });
+          }
+        }
+      }
+
+      // 3. Очищаем старые данные по проекту и записываем новые
+      await bddsIncomeService.deleteProjectEntries(projectId);
+      await bddsIncomeService.upsertEntries(entries);
+    } finally {
+      setFilling(false);
+    }
+  }, [projectId, groupCategories, filteredMonthly, groupCatIds, financeCalc]);
+
   return {
     projectName,
     costGroup,
@@ -349,5 +432,7 @@ export function useScheduleV2(yearFrom: number, yearTo: number): IUseScheduleV2R
     loading,
     error,
     reload: loadData,
+    fillBdds,
+    filling,
   };
 }
