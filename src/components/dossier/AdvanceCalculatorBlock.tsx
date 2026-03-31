@@ -16,15 +16,22 @@ import {
   InfoCircleOutlined,
 } from '@ant-design/icons';
 import { AdvanceChart } from './AdvanceChart';
+import type { IDossierBddsData, IDossierHeaderData } from '../../types/dossier';
 
 const { Text, Title } = Typography;
-
-const CONTRACT_TOTAL = 15_800_000_000;
 
 const fmt = (v: number) =>
   v.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export const AdvanceCalculatorBlock: FC = () => {
+interface IProps {
+  bdds: IDossierBddsData;
+  header: IDossierHeaderData;
+}
+
+export const AdvanceCalculatorBlock: FC<IProps> = ({ bdds, header }) => {
+  const contractTotal = header.contract_amount;
+  const guRate = bdds.gu_rate_pct / 100;
+
   const [aOst, setAOst] = useState<number>(500_000_000);
   const [wRem, setWRem] = useState<number>(10_000_000_000);
   const [wFact, setWFact] = useState<number>(400_000_000);
@@ -35,7 +42,7 @@ export const AdvanceCalculatorBlock: FC = () => {
     return (aOst / wRem) * wFact;
   }, [aOst, wRem, wFact]);
 
-  const guaranteeDeduction = useMemo(() => wFact * 0.025, [wFact]);
+  const guaranteeDeduction = useMemo(() => wFact * guRate, [wFact, guRate]);
 
   const totalPayout = useMemo(
     () => wFact - nonTargetDeduction - targetMaterials - guaranteeDeduction,
@@ -160,8 +167,8 @@ export const AdvanceCalculatorBlock: FC = () => {
 
             <div className="dossier-calc-result">
               <Text>
-                <Tooltip title="2,5% от суммы КС-2 удерживается в качестве обеспечения гарантийных обязательств.">
-                  <span className="dossier-term">Гарантийное удержание (2,5%) <InfoCircleOutlined /></span>
+                <Tooltip title={`${bdds.gu_rate_pct}% от суммы КС-2 удерживается в качестве обеспечения гарантийных обязательств.`}>
+                  <span className="dossier-term">Гарантийное удержание ({bdds.gu_rate_pct}%) <InfoCircleOutlined /></span>
                 </Tooltip>
               </Text>
               <Text strong className="dossier-calc-value-warn">
@@ -201,7 +208,7 @@ export const AdvanceCalculatorBlock: FC = () => {
       <Divider />
       <Title level={5}>Динамика погашения авансов vs Остаток бэклога</Title>
       <AdvanceChart
-        contractTotal={CONTRACT_TOTAL}
+        contractTotal={contractTotal}
         aOst={aOst}
         wRem={wRem}
         wFact={wFact}

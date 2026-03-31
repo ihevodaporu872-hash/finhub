@@ -8,10 +8,23 @@ import {
   InfoCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
+import type { IDossierBddsData, IDossierHeaderData } from '../../types/dossier';
 
 const { Text, Paragraph } = Typography;
 
-export const BddsConditionsBlock: FC = () => {
+const fmtAmt = (v: number) =>
+  v.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+interface IProps {
+  data: IDossierBddsData;
+  header: IDossierHeaderData;
+}
+
+export const BddsConditionsBlock: FC<IProps> = ({ data, header }) => {
+  const prefAdvanceAmount = header.contract_amount * (data.preferential_advance_pct / 100);
+  const totalLagDays = data.ks2_acceptance_days + data.ks2_payment_days;
+  const calendarLag = Math.round(totalLagDays * 1.4);
+
   return (
     <Card
       title={
@@ -39,23 +52,36 @@ export const BddsConditionsBlock: FC = () => {
           авансы.
         </Paragraph>
         <Paragraph className="dossier-section-text">
-          Срок выплаты — <Text strong>20 рабочих дней</Text> после выставления счёта и предоставления{' '}
-          <Tooltip title="Банковская гарантия — документ, по которому банк обязуется вернуть аванс заказчику в случае неисполнения обязательств генподрядчиком.">
-            <Text strong className="dossier-term">БГ <InfoCircleOutlined /></Text>
-          </Tooltip>.
+          Срок выплаты — <Text strong>{data.advance_payment_days} рабочих дней</Text> после
+          выставления счёта
+          {data.advance_requires_bg && (
+            <>
+              {' '}и предоставления{' '}
+              <Tooltip title="Банковская гарантия — документ, по которому банк обязуется вернуть аванс заказчику в случае неисполнения обязательств генподрядчиком.">
+                <Text strong className="dossier-term">БГ <InfoCircleOutlined /></Text>
+              </Tooltip>
+            </>
+          )}
+          .
         </Paragraph>
       </div>
 
       {/* Льготный аванс */}
-      <div className="dossier-section">
-        <div className="dossier-section-title">
-          <SafetyCertificateOutlined /> Льготный аванс (без БГ)
+      {data.preferential_advance_pct > 0 && (
+        <div className="dossier-section">
+          <div className="dossier-section-title">
+            <SafetyCertificateOutlined /> Льготный аванс (без БГ)
+          </div>
+          <Paragraph className="dossier-section-text">
+            До <Text strong>{data.preferential_advance_pct}%</Text> от суммы договора
+            (<Text strong>{fmtAmt(prefAdvanceAmount)} ₽</Text>) перечисляется
+            на отдельный банковский счёт
+            {data.preferential_advance_bank && (
+              <> в <Tag color="blue">{data.preferential_advance_bank}</Tag></>
+            )}
+          </Paragraph>
         </div>
-        <Paragraph className="dossier-section-text">
-          До <Text strong>10%</Text> от суммы договора (<Text strong>1 580 000 000 ₽</Text>) перечисляется
-          на отдельный банковский счёт в <Tag color="blue">ВТБ</Tag>
-        </Paragraph>
-      </div>
+      )}
 
       {/* Тайминг КС-2 */}
       <div className="dossier-section">
@@ -69,17 +95,17 @@ export const BddsConditionsBlock: FC = () => {
           items={[
             {
               title: 'Подача актов',
-              description: 'до 5 числа месяца',
+              description: `до ${data.ks2_submission_day} числа месяца`,
               status: 'process',
             },
             {
               title: 'Приёмка',
-              description: '15 раб. дней',
+              description: `${data.ks2_acceptance_days} раб. дней`,
               status: 'process',
             },
             {
               title: 'Оплата',
-              description: '15 раб. дней',
+              description: `${data.ks2_payment_days} раб. дней`,
               status: 'process',
             },
           ]}
@@ -89,30 +115,36 @@ export const BddsConditionsBlock: FC = () => {
           color="warning"
           className="dossier-lag-tag"
         >
-          Лаг поступления денег ~45 календарных дней!
+          Лаг поступления денег ~{calendarLag} календарных дней!
         </Tag>
       </div>
 
       {/* Гарантийное удержание */}
-      <div className="dossier-section">
-        <div className="dossier-section-title">
-          <SafetyCertificateOutlined />{' '}
-          <Tooltip title="Часть оплаты, удерживаемая заказчиком в качестве обеспечения гарантийных обязательств генподрядчика.">
-            <span className="dossier-term">Гарантийное удержание (ГУ) <InfoCircleOutlined /></span>
-          </Tooltip>
+      {data.gu_rate_pct > 0 && (
+        <div className="dossier-section">
+          <div className="dossier-section-title">
+            <SafetyCertificateOutlined />{' '}
+            <Tooltip title="Часть оплаты, удерживаемая заказчиком в качестве обеспечения гарантийных обязательств генподрядчика.">
+              <span className="dossier-term">Гарантийное удержание (ГУ) <InfoCircleOutlined /></span>
+            </Tooltip>
+          </div>
+          <Paragraph className="dossier-section-text">
+            Удержание живыми деньгами <Text strong>{data.gu_rate_pct}%</Text> с каждой подписанной КС-2.
+          </Paragraph>
+          <Paragraph className="dossier-section-text">
+            Возврат — через <Text strong>{data.gu_return_months} месяцев</Text> после итогового Акта №3.
+          </Paragraph>
+          {data.gu_bg_replacement && (
+            <Tooltip
+              title={`Возможен возврат в течение ${data.gu_bg_return_days} рабочих дней при замене удержания на банковскую гарантию. Позволяет высвободить живые деньги в оборот.`}
+            >
+              <Tag color="green" className="dossier-optimization-tag">
+                <InfoCircleOutlined /> Оптимизация ликвидности
+              </Tag>
+            </Tooltip>
+          )}
         </div>
-        <Paragraph className="dossier-section-text">
-          Удержание живыми деньгами <Text strong>2,5%</Text> с каждой подписанной КС-2.
-        </Paragraph>
-        <Paragraph className="dossier-section-text">
-          Возврат — через <Text strong>24 месяца</Text> после итогового Акта №3.
-        </Paragraph>
-        <Tooltip title="Возможен возврат в течение 10 рабочих дней при замене удержания на банковскую гарантию. Позволяет высвободить живые деньги в оборот.">
-          <Tag color="green" className="dossier-optimization-tag">
-            <InfoCircleOutlined /> Оптимизация ликвидности
-          </Tag>
-        </Tooltip>
-      </div>
+      )}
     </Card>
   );
 };

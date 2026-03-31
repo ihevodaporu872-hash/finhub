@@ -16,65 +16,30 @@ import {
   InfoCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import type { IDossierPenaltiesData, IPenaltyItem } from '../../types/dossier';
 
 const { Text } = Typography;
 
-interface IPenaltyRow {
+interface IPenaltyRow extends IPenaltyItem {
   key: string;
-  violation: string;
-  rate: number;
-  rateLabel: string;
-  unit: string;
 }
 
-const penalties: IPenaltyRow[] = [
-  {
-    key: '1',
-    violation: 'Просрочка промежуточных сроков СМР',
-    rate: 200_000,
-    rateLabel: '200 000 ₽',
-    unit: 'за каждый день',
-  },
-  {
-    key: '2',
-    violation: 'Просрочка окончания СМР или получения ЗОС',
-    rate: 250_000,
-    rateLabel: '250 000 ₽',
-    unit: 'за каждый день',
-  },
-  {
-    key: '3',
-    violation: 'Просрочка передачи квартир дольщикам',
-    rate: 1_580_000,
-    rateLabel: '1 580 000 ₽',
-    unit: 'за каждый день',
-  },
-  {
-    key: '4',
-    violation: 'Задержка устранения дефектов по предписаниям',
-    rate: 50_000,
-    rateLabel: '50 000 ₽',
-    unit: 'за каждый день',
-  },
-  {
-    key: '5',
-    violation: 'Смена контроля над ГП без согласования',
-    rate: 1_000_000,
-    rateLabel: '1 000 000 ₽',
-    unit: 'за каждый случай',
-  },
-];
-
-const fmt = (v: number) =>
+const fmtNum = (v: number) =>
   v.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-export const RiskRadarBlock: FC = () => {
+interface IProps {
+  data: IDossierPenaltiesData;
+}
+
+export const RiskRadarBlock: FC<IProps> = ({ data }) => {
   const [days, setDays] = useState<Record<string, number>>({});
 
-  const getTotal = (key: string, rate: number) => {
-    const d = days[key] ?? 0;
-    return d * rate;
-  };
+  const rows: IPenaltyRow[] = data.penalties.map((p, i) => ({
+    ...p,
+    key: String(i),
+  }));
+
+  const getTotal = (key: string, rate: number) => (days[key] ?? 0) * rate;
 
   const columns: ColumnsType<IPenaltyRow> = [
     {
@@ -91,7 +56,7 @@ export const RiskRadarBlock: FC = () => {
       width: 180,
       render: (_: unknown, record: IPenaltyRow) => (
         <Tag color="red" className="dossier-risk-rate-tag">
-          {record.rateLabel} / {record.unit}
+          {fmtNum(record.rate)} ₽ / {record.unit}
         </Tag>
       ),
     },
@@ -125,14 +90,14 @@ export const RiskRadarBlock: FC = () => {
             strong
             className={total > 0 ? 'dossier-risk-total-danger' : 'dossier-risk-total-zero'}
           >
-            {total > 0 ? `${fmt(total)} ₽` : '—'}
+            {total > 0 ? `${fmtNum(total)} ₽` : '—'}
           </Text>
         );
       },
     },
   ];
 
-  const grandTotal = penalties.reduce((acc, p) => acc + getTotal(p.key, p.rate), 0);
+  const grandTotal = rows.reduce((acc, p) => acc + getTotal(p.key, p.rate), 0);
 
   return (
     <Card
@@ -144,43 +109,51 @@ export const RiskRadarBlock: FC = () => {
       }
       className="dossier-card dossier-card--danger"
     >
-      <Table
-        dataSource={penalties}
-        columns={columns}
-        pagination={false}
-        size="middle"
-        className="dossier-risk-table"
-        rowClassName="dossier-risk-row"
-        summary={() => (
-          <Table.Summary.Row className="dossier-risk-summary-row">
-            <Table.Summary.Cell index={0} colSpan={3}>
-              <Text strong>ИТОГО потенциальный убыток</Text>
-            </Table.Summary.Cell>
-            <Table.Summary.Cell index={1}>
-              <Text
-                strong
-                className={grandTotal > 0 ? 'dossier-risk-total-danger' : ''}
-              >
-                {grandTotal > 0 ? `${fmt(grandTotal)} ₽` : '—'}
-              </Text>
-            </Table.Summary.Cell>
-          </Table.Summary.Row>
-        )}
-      />
+      {rows.length > 0 ? (
+        <Table
+          dataSource={rows}
+          columns={columns}
+          pagination={false}
+          size="middle"
+          className="dossier-risk-table"
+          rowClassName="dossier-risk-row"
+          summary={() => (
+            <Table.Summary.Row className="dossier-risk-summary-row">
+              <Table.Summary.Cell index={0} colSpan={3}>
+                <Text strong>ИТОГО потенциальный убыток</Text>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={1}>
+                <Text
+                  strong
+                  className={grandTotal > 0 ? 'dossier-risk-total-danger' : ''}
+                >
+                  {grandTotal > 0 ? `${fmtNum(grandTotal)} ₽` : '—'}
+                </Text>
+              </Table.Summary.Cell>
+            </Table.Summary.Row>
+          )}
+        />
+      ) : (
+        <Text type="secondary">Штрафные санкции не указаны</Text>
+      )}
 
-      <Alert
-        type="info"
-        showIcon
-        icon={<WarningOutlined />}
-        className="dossier-risk-alert"
-        message="Встречная ответственность"
-        description={
-          <Text>
-            Пени Заказчика за просрочку оплаты составляют <Text strong>0,05% в день</Text>.
-            Внимание: начисление начинается только с <Text strong>10-го рабочего дня</Text> просрочки.
-          </Text>
-        }
-      />
+      {data.customer_penalty_rate_pct > 0 && (
+        <Alert
+          type="info"
+          showIcon
+          icon={<WarningOutlined />}
+          className="dossier-risk-alert"
+          message="Встречная ответственность"
+          description={
+            <Text>
+              Пени Заказчика за просрочку оплаты составляют{' '}
+              <Text strong>{data.customer_penalty_rate_pct}% в день</Text>.
+              Внимание: начисление начинается только с{' '}
+              <Text strong>{data.customer_penalty_start_day}-го рабочего дня</Text> просрочки.
+            </Text>
+          }
+        />
+      )}
     </Card>
   );
 };

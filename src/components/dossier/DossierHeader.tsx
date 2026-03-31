@@ -4,10 +4,30 @@ import {
   CalendarOutlined,
   FileDoneOutlined,
 } from '@ant-design/icons';
+import type { IDossierHeaderData } from '../../types/dossier';
 
 const { Title, Text } = Typography;
 
-export const DossierHeader: FC = () => {
+interface IProps {
+  data: IDossierHeaderData;
+}
+
+const fmtDate = (d: string) => {
+  if (!d) return '—';
+  const [y, m, day] = d.split('-');
+  return `${day}.${m}.${y}`;
+};
+
+const STATUS_MAP: Record<string, { color: string; label: string }> = {
+  active: { color: 'green', label: 'В работе' },
+  completed: { color: 'blue', label: 'Завершён' },
+  suspended: { color: 'orange', label: 'Приостановлен' },
+};
+
+export const DossierHeader: FC<IProps> = ({ data }) => {
+  const statusInfo = STATUS_MAP[data.status] ?? STATUS_MAP.active;
+  const priceLabel = data.price_type === 'fixed' ? 'Твёрдая цена' : 'Ориентировочная цена';
+
   return (
     <div className="dossier-header">
       <Row justify="space-between" align="top" wrap>
@@ -16,16 +36,16 @@ export const DossierHeader: FC = () => {
             <FileDoneOutlined className="dossier-header-icon" />
             <div>
               <Title level={4} className="dossier-header-title">
-                Финансовое досье: Договор генподряда №К14
+                Финансовое досье: {data.contract_name}
               </Title>
               <Text type="secondary" className="dossier-header-subtitle">
-                Корпус 14, Стадион «Спартак»
+                {data.contract_object}
               </Text>
             </div>
           </Space>
         </Col>
         <Col xs={24} lg={8} className="dossier-header-status-col">
-          <Tag color="green" className="dossier-status-badge">В работе</Tag>
+          <Tag color={statusInfo.color} className="dossier-status-badge">{statusInfo.label}</Tag>
         </Col>
       </Row>
 
@@ -33,14 +53,14 @@ export const DossierHeader: FC = () => {
         <Col xs={24} sm={12} md={8}>
           <Statistic
             title="Сумма договора (Выручка)"
-            value={15_800_000_000}
+            value={data.contract_amount}
             precision={2}
             suffix="₽"
             groupSeparator=" "
             className="dossier-stat"
           />
           <Text type="secondary" className="dossier-stat-note">
-            Твёрдая цена, вкл. НДС 20%
+            {priceLabel}, вкл. НДС {data.nds_rate}%
           </Text>
         </Col>
         <Col xs={24} sm={12} md={8}>
@@ -49,10 +69,10 @@ export const DossierHeader: FC = () => {
               <CalendarOutlined /> Срок реализации
             </Text>
             <div className="dossier-stat-dates">
-              01.05.2025 — 01.02.2028
+              {fmtDate(data.start_date)} — {fmtDate(data.end_date)}
             </div>
             <Text type="secondary" className="dossier-stat-note">
-              33 месяца
+              {data.duration_months} месяцев
             </Text>
           </div>
         </Col>

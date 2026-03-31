@@ -530,6 +530,38 @@ body {
   gap: 24px;
 }
 
+/* Тулбар с проектами */
+.dossier-toolbar-section {
+  margin-bottom: 20px;
+}
+
+.dossier-toolbar-actions {
+  margin-top: 12px;
+}
+
+.dossier-amendments-count {
+  font-size: 12px;
+}
+
+/* Таймлайн ДС */
+.dossier-timeline-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dossier-timeline-details {
+  margin-left: 4px;
+}
+
+.dossier-timeline-btn {
+  margin-top: 4px;
+}
+
+.mb-8 {
+  margin-bottom: 8px;
+}
+
 /* Шапка */
 .dossier-header {
   padding: 24px;
