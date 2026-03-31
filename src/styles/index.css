@@ -1096,3 +1096,88 @@ body {
     display: none;
   }
 }
+
+/* ============================================================
+   ББЛ — Управленческий баланс
+   ============================================================ */
+
+/* Заголовки секций */
+.bbl-section-header td {
+  background-color: #f0f0f0 !important;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* Строки-итоги секций */
+.bbl-section-total td {
+  background-color: #e6f7ff !important;
+  font-weight: 600;
+}
+
+/* Связанные строки (данные из БДР/БДДС) — серый фон */
+.bbl-linked-row td {
+  background-color: #fafafa !important;
+  font-style: italic;
+}
+
+/* Иконка связи */
+.bbl-link-icon {
+  margin-left: 6px;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+/* Контроль баланса — OK (разрыв = 0) */
+.bbl-balance-ok td {
+  background-color: #f6ffed !important;
+  font-weight: 700;
+  color: #52c41a;
+}
+
+/* Контроль баланса — ALERT (разрыв != 0) */
+.bbl-balance-alert td {
+  background-color: #fff1f0 !important;
+  font-weight: 700;
+  color: #ff4d4f;
+  animation: bbl-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes bbl-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Editable cell */
+.bbl-editable-cell {
+  cursor: pointer;
+  display: inline-block;
+  min-width: 40px;
+  min-height: 18px;
+  padding: 0 2px;
+  border-bottom: 1px dashed #d9d9d9;
+}
+
+.bbl-editable-cell:hover {
+  background-color: #e6f7ff;
+}
+
+/* Health cards */
+.bbl-health-cards {
+  margin-bottom: 0;
+}
+
+/* Адаптивность — iPhone */
+@media (max-width: 430px) {
+  .bbl-health-cards .ant-col {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+/* Адаптивность — iPad */
+@media (min-width: 431px) and (max-width: 768px) {
+  .bbl-health-cards .ant-col {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+}

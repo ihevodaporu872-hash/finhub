@@ -1,5 +1,5 @@
-import { PagePlaceholder } from '../components/common/PagePlaceholder';
+import { BblPage } from '../components/bbl/BblPage';
 
 export function BblPageWrapper() {
-  return <PagePlaceholder title="ББЛ — Бюджет по Балансовому Листу" />;
+  return <BblPage />;
 }
