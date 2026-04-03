@@ -76,24 +76,28 @@ interface IColumnMapping {
 }
 
 /**
- * Определяем колонки по двухуровневым заголовкам:
- * Row 0: ... | Дебет |       | Кредит |        | ...
- * Row 1: ... | Счет  | (sum) | Счет   | (sum)  | ...
+ * Определяем колонки по заголовкам карточки счета 62 из 1С.
+ * Формат 1С (merged cells):
+ *   Row 0: Период | Документ | Аналитика Дт | Аналитика Кт | Дебет(merged 2 cols) | Кредит(merged 2 cols) | Текущее сальдо
+ *   Row 1:        |          |              |              | Счет  | (пусто)       | Счет   | (пусто)       |
+ * «Дебет»/«Кредит» — merged на 2 колонки, значение только в левой.
+ * Под ними: Счет (col), Сумма (col+1).
  */
 function detectColumns(sheet: XLSX.WorkSheet): { mapping: IColumnMapping; dataStartRow: number } | null {
   const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
-  const maxScanRow = Math.min(range.s.r + 10, range.e.r);
+  const maxScanRow = Math.min(range.s.r + 15, range.e.r);
 
-  // Ищем строку с «Период» или «Дата»
+  const getH = (r: number, c: number): string => {
+    const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+    return normalizeHeader(String(cell?.v ?? cell?.w ?? ''));
+  };
+
+  // Ищем строку с «Период» среди первых 15 строк
   let headerRow = -1;
   for (let r = range.s.r; r <= maxScanRow; r++) {
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const cell = sheet[XLSX.utils.encode_cell({ r, c })];
-      if (cell && normalizeHeader(String(cell.v || cell.w || '')) === 'период') {
-        headerRow = r;
-        break;
-      }
-      if (cell && normalizeHeader(String(cell.v || cell.w || '')) === 'дата') {
+    for (let c = range.s.c; c <= Math.min(range.s.c + 5, range.e.c); c++) {
+      const h = getH(r, c);
+      if (h === 'период' || h === 'дата') {
         headerRow = r;
         break;
       }
@@ -101,46 +105,89 @@ function detectColumns(sheet: XLSX.WorkSheet): { mapping: IColumnMapping; dataSt
     if (headerRow >= 0) break;
   }
 
-  if (headerRow < 0) return null;
+  if (headerRow < 0) {
+    console.error('[ETL] Не найден заголовок «Период» в первых 15 строках');
+    return null;
+  }
 
-  // Читаем заголовки первой строки (headerRow) и второй (headerRow+1)
-  const mapping: Partial<IColumnMapping> = {};
-
+  // Диагностика: выводим все заголовки
+  const debugRow0: string[] = [];
+  const debugRow1: string[] = [];
   for (let c = range.s.c; c <= range.e.c; c++) {
-    const cell0 = sheet[XLSX.utils.encode_cell({ r: headerRow, c })];
-    const cell1 = sheet[XLSX.utils.encode_cell({ r: headerRow + 1, c })];
-    const h0 = normalizeHeader(String(cell0?.v ?? cell0?.w ?? ''));
-    const h1 = normalizeHeader(String(cell1?.v ?? cell1?.w ?? ''));
+    debugRow0.push(`[${c}]="${getH(headerRow, c)}"`);
+    debugRow1.push(`[${c}]="${getH(headerRow + 1, c)}"`);
+  }
+  console.log('[ETL] Row0:', debugRow0.join(' | '));
+  console.log('[ETL] Row1:', debugRow1.join(' | '));
 
+  const mapping: Partial<IColumnMapping> = {};
+  let debitCol = -1;
+  let creditCol = -1;
+
+  // Проход 1: ищем основные заголовки в row 0
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const h0 = getH(headerRow, c);
     if (h0 === 'период' || h0 === 'дата') mapping.docDate = c;
-    if (h0 === 'документ') mapping.document = c;
-    if (h0 === 'аналитика дт') mapping.analyticsDt = c;
-    if (h0 === 'аналитика кт') mapping.analyticsKt = c;
-    if (h0 === 'текущее сальдо' || h0 === 'текущеесальдо') continue;
+    else if (h0 === 'документ') mapping.document = c;
+    else if (h0 === 'аналитика дт') mapping.analyticsDt = c;
+    else if (h0 === 'аналитика кт') mapping.analyticsKt = c;
+    else if (h0 === 'дебет') debitCol = c;
+    else if (h0 === 'кредит') creditCol = c;
+  }
 
-    // Двухуровневые: «Дебет»→«Счет», «Кредит»→«Счет»/сумма
-    if (h0 === 'дебет' && h1 === 'счет') mapping.debitAccount = c;
-    if (h0 === 'кредит' && h1 === 'счет') mapping.creditAccount = c;
-
-    // Колонка суммы кредита — следующая после «Кредит Счет»
-    if (h0 === 'кредит' && h1 !== 'счет' && mapping.creditAccount !== undefined && mapping.creditAmount === undefined) {
-      mapping.creditAmount = c;
+  // Проход 2: для «Дебет» и «Кредит» — берём col как Счет, col+1 как Сумма
+  if (debitCol >= 0) {
+    // Проверяем: «Счет» может быть в row+1 под «Дебет», или сам столбец — уже «Счет»
+    const h1 = getH(headerRow + 1, debitCol);
+    if (h1 === 'счет' || h1 === '') {
+      mapping.debitAccount = debitCol;
     }
   }
 
-  // Fallback: если «Кредит» — единственная колонка (без подстроки «Счет»)
-  if (mapping.creditAmount === undefined) {
+  if (creditCol >= 0) {
+    const h1 = getH(headerRow + 1, creditCol);
+    if (h1 === 'счет' || h1 === '') {
+      mapping.creditAccount = creditCol;
+      // Сумма кредита — следующая колонка
+      mapping.creditAmount = creditCol + 1;
+    }
+  }
+
+  // Проход 3: ищем «Счет» в row+1 если Дебет/Кредит не найдены в row 0
+  if (debitCol < 0 || creditCol < 0) {
+    const accountCols: number[] = [];
     for (let c = range.s.c; c <= range.e.c; c++) {
-      const cell0 = sheet[XLSX.utils.encode_cell({ r: headerRow, c })];
-      const h0 = normalizeHeader(String(cell0?.v ?? cell0?.w ?? ''));
-      if (h0 === 'кредит' && c !== mapping.creditAccount) {
-        mapping.creditAmount = c;
-        break;
-      }
+      const h1 = getH(headerRow + 1, c);
+      if (h1 === 'счет') accountCols.push(c);
+    }
+    // Первый «Счет» = дебет, второй = кредит
+    if (accountCols.length >= 2) {
+      if (mapping.debitAccount === undefined) mapping.debitAccount = accountCols[0];
+      if (mapping.creditAccount === undefined) mapping.creditAccount = accountCols[1];
+      if (mapping.creditAmount === undefined) mapping.creditAmount = accountCols[1] + 1;
     }
   }
 
-  if (mapping.docDate === undefined || mapping.creditAmount === undefined) return null;
+  // Определяем начало данных: если есть row+1 с «Счет» → данные с row+2, иначе row+1
+  let hasSubHeader = false;
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    if (getH(headerRow + 1, c) === 'счет') {
+      hasSubHeader = true;
+      break;
+    }
+  }
+
+  console.log('[ETL] Mapping:', {
+    docDate: mapping.docDate, document: mapping.document,
+    analyticsDt: mapping.analyticsDt, analyticsKt: mapping.analyticsKt,
+    debitAccount: mapping.debitAccount, creditAccount: mapping.creditAccount,
+    creditAmount: mapping.creditAmount, debitCol, creditCol, hasSubHeader,
+  });
+
+  if (mapping.docDate === undefined || mapping.creditAmount === undefined) {
+    console.error('[ETL] Не удалось определить обязательные колонки: docDate или creditAmount');
+    return null;
+  }
 
   return {
     mapping: {
@@ -152,7 +199,7 @@ function detectColumns(sheet: XLSX.WorkSheet): { mapping: IColumnMapping; dataSt
       creditAccount: mapping.creditAccount ?? -1,
       creditAmount: mapping.creditAmount,
     },
-    dataStartRow: headerRow + 2, // после двух строк заголовков
+    dataStartRow: headerRow + (hasSubHeader ? 2 : 1),
   };
 }
 
