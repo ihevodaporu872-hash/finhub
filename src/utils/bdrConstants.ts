@@ -63,6 +63,41 @@ export const BDR_OVERHEAD_ROWS: BdrRowDef[] = [
 
 export const OVERHEAD_CODES = BDR_OVERHEAD_ROWS.map((r) => r.code);
 
+/** Логические подгруппы накладных расходов (секция III) */
+export interface IOverheadGroup {
+  code: string;
+  name: string;
+  childCodes: string[];
+}
+
+export const OVERHEAD_GROUPS: IOverheadGroup[] = [
+  {
+    code: 'og_labor',
+    name: 'Оплата труда ИТР',
+    childCodes: ['overhead_01'],
+  },
+  {
+    code: 'og_rental',
+    name: 'Аренда механизмов',
+    childCodes: ['overhead_08', 'overhead_09', 'overhead_10', 'overhead_11', 'overhead_12'],
+  },
+  {
+    code: 'og_site',
+    name: 'Содержание площадки',
+    childCodes: ['overhead_02', 'overhead_03', 'overhead_04', 'overhead_05', 'overhead_13', 'overhead_14', 'overhead_15', 'overhead_16', 'overhead_17'],
+  },
+  {
+    code: 'og_taxes',
+    name: 'Налоги и сборы объекта',
+    childCodes: ['overhead_06', 'overhead_07'],
+  },
+  {
+    code: 'og_other',
+    name: 'Прочие производственные платежи',
+    childCodes: ['overhead_18', 'overhead_19', 'overhead_20', 'overhead_21', 'overhead_22', 'overhead_23', 'overhead_24', 'overhead_25'],
+  },
+];
+
 // Маппинг BDR sub_type → имя БДДС-категории (для автозаполнения БДДС факта)
 export const BDR_SUB_TO_BDDS_NAME: Partial<Record<BdrSubType, string>> = {
   materials: 'Материальные расходы (Закупка материалов)',

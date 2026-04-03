@@ -15,17 +15,24 @@ interface IProps {
   yearRows?: Map<number, BdrTableRow[]>;
   yearMonthSlots?: YearMonthSlot[];
   hideEmpty: boolean;
+  nzpFilter?: boolean;
   onUpdatePlan?: (rowCode: string, month: number, amount: number) => void;
   onUpdateFact?: (rowCode: string, month: number, amount: number) => void;
   onOpenSub: (subType: BdrSubType) => void;
   onOpenFixedPlan?: () => void;
 }
 
+/** Строки прямой себестоимости, по которым может быть разрыв КС-2 */
+const NZP_FILTER_CODES = [
+  'cost_materials', 'cost_labor', 'cost_subcontract', 'cost_design', 'cost_rental',
+];
+
 export const BdrTreeTable = ({
   rows,
   yearRows,
   yearMonthSlots,
   hideEmpty,
+  nzpFilter,
   onUpdatePlan,
   onUpdateFact,
   onOpenSub,
@@ -80,8 +87,28 @@ export const BdrTreeTable = ({
   const treeData = useMemo((): IBdrTreeRow[] => {
     let tree = buildBdrTree(flatRows);
     if (hideEmpty) tree = filterEmptyRows(tree);
+
+    // Фильтр разрыва КС-2: оставляем только секцию II с расходными статьями,
+    // где факт > 0 и есть разрыв между внутренней и внешней КС-2
+    if (nzpFilter) {
+      tree = tree.filter((section) => {
+        if (section.sectionKey === 'section_2' && section.children) {
+          section.children = section.children.filter((row) => {
+            if (!NZP_FILTER_CODES.includes(row.rowCode)) return false;
+            const factTotal = (row.fact_total as number) || 0;
+            const planTotal = (row.plan_total as number) || 0;
+            // Разрыв: факт отличается от плана более чем на 10%
+            return factTotal > 0 && planTotal > 0 && Math.abs(factTotal - planTotal) / planTotal > 0.1;
+          });
+          return section.children.length > 0;
+        }
+        // Оставляем секцию I для контекста
+        return section.sectionKey === 'section_1';
+      });
+    }
+
     return tree;
-  }, [flatRows, hideEmpty]);
+  }, [flatRows, hideEmpty, nzpFilter]);
 
   const columns = useMemo(() => {
     const nameCol = buildBdrTreeNameColumn(onOpenSub, onOpenFixedPlan);
@@ -100,6 +127,7 @@ export const BdrTreeTable = ({
   const rowClassName = (record: IBdrTreeRow) => {
     const classes: string[] = [];
     if (record.isSectionHeader) classes.push('bdr-tree-section-row');
+    if (record.isGroupHeader) classes.push('bdr-tree-group-row');
     if (record.isProfit) classes.push('bdr-tree-profit-row');
     if (record.isKeyMetric) classes.push('bdr-key-metric');
     if (record.isPercent && !record.isSectionHeader) classes.push('bdr-tree-percent-row');

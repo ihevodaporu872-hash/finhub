@@ -553,6 +553,15 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.bdr-kpi-clickable {
+  cursor: pointer;
+}
+
+.bdr-kpi-clickable:hover {
+  box-shadow: 0 2px 12px rgba(22, 119, 255, 0.25);
+  border-color: #1677ff !important;
+}
+
 .bdr-kpi-dash-icon {
   font-size: 18px;
   margin-bottom: 4px;
@@ -588,6 +597,20 @@ body {
 .bdr-tree-section-name {
   font-size: 13px;
   letter-spacing: 0.02em;
+}
+
+/* Строка-заголовок подгруппы накладных (Оплата труда ИТР, Аренда механизмов и т.д.) */
+.bdr-tree-group-row > td {
+  background-color: #fafafa !important;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.bdr-tree-group-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: #595959;
+  padding-left: 8px;
 }
 
 /* Строки прибыли (Маржинальная, Операционная, Чистая) */

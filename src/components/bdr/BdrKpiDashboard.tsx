@@ -11,6 +11,7 @@ import type { BdrTableRow } from '../../types/bdr';
 
 interface IProps {
   yearRows: Map<number, BdrTableRow[]>;
+  onNzpClick?: () => void;
 }
 
 interface IKpiItem {
@@ -20,6 +21,7 @@ interface IKpiItem {
   icon: React.ReactNode;
   color: string;
   bgColor: string;
+  onClick?: () => void;
 }
 
 const fmtPct = (v: number): string => v ? `${v.toFixed(1)}%` : '0%';
@@ -56,7 +58,7 @@ const getTotalFact = (yearRows: Map<number, BdrTableRow[]>, code: string): numbe
   return total;
 };
 
-export const BdrKpiDashboard: FC<IProps> = ({ yearRows }) => {
+export const BdrKpiDashboard: FC<IProps> = ({ yearRows, onNzpClick }) => {
   // % готовности и НЗП — кумулятивные, берём последний ненулевой месяц
   const readiness = getLastFactPercent(yearRows, 'readiness_percent');
   const nzpToRevenue = getLastFactPercent(yearRows, 'nzp_to_revenue');
@@ -93,10 +95,13 @@ export const BdrKpiDashboard: FC<IProps> = ({ yearRows }) => {
       value: fmtPct(nzpDisplay),
       tooltip: isOverbilling
         ? 'КС-2 принято больше, чем выполнено — позитивный кэш-флоу для компании'
-        : 'Отношение незавершённого производства к выручке. Высокий % = риск кассового разрыва',
+        : nzpToRevenue > 10
+          ? 'Клик: показать статьи с разрывом КС-2. Высокий % = риск кассового разрыва'
+          : 'Отношение незавершённого производства к выручке',
       icon: <AuditOutlined />,
       color: isOverbilling ? '#52c41a' : (nzpToRevenue > 15 ? '#fa8c16' : '#52c41a'),
       bgColor: isOverbilling ? '#f6ffed' : (nzpToRevenue > 15 ? '#fff7e6' : '#f6ffed'),
+      onClick: !isOverbilling && nzpToRevenue > 10 ? onNzpClick : undefined,
     },
     {
       title: 'Gross Margin',
@@ -131,8 +136,9 @@ export const BdrKpiDashboard: FC<IProps> = ({ yearRows }) => {
           <Tooltip title={kpi.tooltip} placement="bottom">
             <Card
               size="small"
-              className="bdr-kpi-dash-card"
+              className={`bdr-kpi-dash-card${kpi.onClick ? ' bdr-kpi-clickable' : ''}`}
               style={{ borderLeft: `3px solid ${kpi.color}`, background: kpi.bgColor }}
+              onClick={kpi.onClick}
             >
               <div className="bdr-kpi-dash-icon" style={{ color: kpi.color }}>
                 {kpi.icon}

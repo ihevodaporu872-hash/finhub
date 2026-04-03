@@ -12,6 +12,8 @@ import {
   DashboardOutlined,
   SafetyCertificateOutlined,
   FileSearchOutlined,
+  ToolOutlined,
+  FileProtectOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
@@ -26,6 +28,8 @@ const menuItems: MenuItem[] = [
   { key: '/bdds/income', icon: <FundOutlined />, label: 'Плановый график' },
   { key: '/bdds/schedule-v2', icon: <FundOutlined />, label: 'Плановый график 2.0' },
   { key: '/actual-execution', icon: <CheckCircleOutlined />, label: 'Факт. выполнение' },
+  { key: '/ks6a', icon: <ToolOutlined />, label: 'КС-6а Готовность' },
+  { key: '/contracts', icon: <FileProtectOutlined />, label: 'Договоры' },
   { key: '/guarantee', icon: <SafetyCertificateOutlined />, label: 'Контроль ГУ' },
   { key: '/dashboards', icon: <DashboardOutlined />, label: 'Дашборды' },
   { key: '/dossier', icon: <FileSearchOutlined />, label: 'Досье договора' },

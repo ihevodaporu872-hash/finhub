@@ -1,5 +1,5 @@
 import type { BdrTableRow } from '../types/bdr';
-import { BDR_OVERHEAD_ROWS } from './bdrConstants';
+import { BDR_OVERHEAD_ROWS, OVERHEAD_GROUPS } from './bdrConstants';
 
 /** Определение секции БДР */
 export interface IBdrSection {
@@ -88,8 +88,73 @@ export const BDR_FORMULAS: Record<string, string> = {
 export interface IBdrTreeRow extends BdrTableRow {
   children?: IBdrTreeRow[];
   isSectionHeader?: boolean;
+  isGroupHeader?: boolean;
   sectionKey?: string;
   isProfit?: boolean;
+}
+
+/** Собирает все dataKey для plan/fact из дочерних строк */
+function collectMonthKeys(rows: BdrTableRow[]): string[] {
+  const keys = new Set<string>();
+  for (const row of rows) {
+    for (const k of Object.keys(row)) {
+      const match = k.match(/^plan_month_(.+)$/);
+      if (match) keys.add(match[1]);
+    }
+  }
+  return [...keys];
+}
+
+/** Построение подгрупп для секции III (накладные расходы) */
+function buildOverheadGroups(rowMap: Map<string, BdrTableRow>, allRows: BdrTableRow[]): IBdrTreeRow[] {
+  const groups: IBdrTreeRow[] = [];
+  const monthKeys = collectMonthKeys(allRows);
+
+  for (const group of OVERHEAD_GROUPS) {
+    const groupChildren: IBdrTreeRow[] = [];
+    let planTotal = 0;
+    let factTotal = 0;
+
+    for (const code of group.childCodes) {
+      const row = rowMap.get(code);
+      if (row) {
+        groupChildren.push({ ...row });
+        planTotal += (row.plan_total as number) || 0;
+        factTotal += (row.fact_total as number) || 0;
+      }
+    }
+
+    const groupRow: IBdrTreeRow = {
+      key: group.code,
+      name: group.name,
+      rowCode: group.code,
+      isGroupHeader: true,
+      isSemiBold: true,
+      isCalculated: true,
+      plan_total: planTotal,
+      fact_total: factTotal,
+      children: groupChildren.length > 0 ? groupChildren : undefined,
+    };
+
+    // Помесячные суммы (поддержка multi-year dataKey)
+    for (const dk of monthKeys) {
+      let pSum = 0;
+      let fSum = 0;
+      for (const code of group.childCodes) {
+        const row = rowMap.get(code);
+        if (row) {
+          pSum += (row[`plan_month_${dk}`] as number) || 0;
+          fSum += (row[`fact_month_${dk}`] as number) || 0;
+        }
+      }
+      groupRow[`plan_month_${dk}`] = pSum;
+      groupRow[`fact_month_${dk}`] = fSum;
+    }
+
+    groups.push(groupRow);
+  }
+
+  return groups;
 }
 
 /** Группировка плоских строк в дерево секций */
@@ -105,11 +170,18 @@ export function buildBdrTree(flatRows: BdrTableRow[]): IBdrTreeRow[] {
     const summaryRow = rowMap.get(section.summaryRowCode);
     if (!summaryRow) continue;
 
-    const children: IBdrTreeRow[] = [];
-    for (const code of section.childCodes) {
-      const childRow = rowMap.get(code);
-      if (childRow) {
-        children.push({ ...childRow });
+    let children: IBdrTreeRow[];
+
+    // Секция III — группируем накладные расходы в подгруппы
+    if (section.key === 'section_3') {
+      children = buildOverheadGroups(rowMap, flatRows);
+    } else {
+      children = [];
+      for (const code of section.childCodes) {
+        const childRow = rowMap.get(code);
+        if (childRow) {
+          children.push({ ...childRow });
+        }
       }
     }
 
@@ -135,6 +207,17 @@ export function filterEmptyRows(tree: IBdrTreeRow[]): IBdrTreeRow[] {
     if (!section.children) return section;
     const filtered = section.children.filter((row) => {
       if (row.isPercent) return true;
+      // Для подгрупп — проверяем наличие непустых дочерних
+      if (row.isGroupHeader && row.children) {
+        const nonEmpty = row.children.filter((child) => {
+          const p = (child.plan_total as number) || 0;
+          const f = (child.fact_total as number) || 0;
+          return p !== 0 || f !== 0;
+        });
+        if (nonEmpty.length === 0) return false;
+        row.children = nonEmpty;
+        return true;
+      }
       const plan = (row.plan_total as number) || 0;
       const fact = (row.fact_total as number) || 0;
       return plan !== 0 || fact !== 0;

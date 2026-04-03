@@ -125,6 +125,10 @@ export const buildBdrTreeNameColumn = (
         return <strong className="bdr-tree-section-name">{record.name}</strong>;
       }
 
+      if (record.isGroupHeader) {
+        return <span className="bdr-tree-group-name">{record.name}</span>;
+      }
+
       if (record.isClickable && record.subType) {
         if (record.rowCode === 'fixed_expenses' && onOpenFixedPlan) {
           return (

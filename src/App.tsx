@@ -12,6 +12,8 @@ import { BddsReceiptsPageWrapper } from './pages/BddsReceiptsPageWrapper';
 import { ScheduleV2PageWrapper } from './pages/ScheduleV2PageWrapper';
 import { GuaranteePageWrapper } from './pages/GuaranteePageWrapper';
 import { ContractDossierPageWrapper } from './pages/ContractDossierPageWrapper';
+import { Ks6aPageWrapper } from './pages/Ks6aPageWrapper';
+import { ContractsPageWrapper } from './pages/ContractsPageWrapper';
 
 export const App = () => {
   return (
@@ -25,6 +27,8 @@ export const App = () => {
           <Route path="/bdds/schedule-v2" element={<ScheduleV2PageWrapper />} />
           <Route path="/guarantee" element={<GuaranteePageWrapper />} />
           <Route path="/bdr" element={<BdrPageWrapper />} />
+          <Route path="/ks6a" element={<Ks6aPageWrapper />} />
+          <Route path="/contracts" element={<ContractsPageWrapper />} />
           <Route path="/bbl" element={<BblPageWrapper />} />
           <Route path="/dashboards" element={<DashboardPageWrapper />} />
           <Route path="/dossier" element={<ContractDossierPageWrapper />} />

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Card, Alert, message } from 'antd';
+import { Card, Alert, Tag, message } from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
 import { useBdr } from '../../hooks/useBdr';
 import { BdrToolbar } from './BdrToolbar';
 import { BdrKpiDashboard } from './BdrKpiDashboard';
@@ -16,6 +17,7 @@ export const BdrPage = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [fixedPlanModalOpen, setFixedPlanModalOpen] = useState(false);
   const [hideEmpty, setHideEmpty] = useState(false);
+  const [nzpFilterActive, setNzpFilterActive] = useState(false);
 
   const {
     rows,
@@ -78,8 +80,29 @@ export const BdrPage = () => {
 
   return (
     <>
-      <BdrKpiDashboard yearRows={yearRows} />
-      <Card title="БДР — Бюджет Доходов и Расходов" loading={loading} className="mt-16">
+      <BdrKpiDashboard
+        yearRows={yearRows}
+        onNzpClick={() => setNzpFilterActive((prev) => !prev)}
+      />
+      <Card
+        title={
+          <span>
+            БДР — Бюджет Доходов и Расходов
+            {nzpFilterActive && (
+              <Tag
+                color="warning"
+                closable
+                onClose={() => setNzpFilterActive(false)}
+                className="ml-8"
+              >
+                <FilterOutlined /> Фильтр: разрыв КС-2
+              </Tag>
+            )}
+          </span>
+        }
+        loading={loading}
+        className="mt-16"
+      >
         <BdrToolbar
           yearFrom={yearFrom}
           yearTo={yearTo}
@@ -97,6 +120,7 @@ export const BdrPage = () => {
           yearRows={yearRows}
           yearMonthSlots={yearMonthSlots}
           hideEmpty={hideEmpty}
+          nzpFilter={nzpFilterActive}
           onUpdatePlan={isReadOnly ? undefined : (code, month, amount) => updateEntry(code, month, amount, 'plan')}
           onUpdateFact={isReadOnly ? undefined : (code, month, amount) => updateEntry(code, month, amount, 'fact')}
           onOpenSub={setOpenSubType}
