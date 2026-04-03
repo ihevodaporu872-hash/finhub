@@ -21,6 +21,33 @@ const BALANCE_OPEN_OBS_NAME = 'Остаток на ОБС (Заблокиров�
 const BALANCE_CLOSE_RS_NAME = 'Остаток на расчётных счетах на конец (Свободный кэш)';
 const BALANCE_CLOSE_OBS_NAME = 'Остаток на ОБС на конец (Заблокированный/Целевой кэш)';
 
+// Имена для KPI
+const ADVANCE_INCOME_RS_NAME = 'Авансы от Заказчика (на обычный р/с)';
+const ADVANCE_SUB_NAME = 'Авансы субподрядчикам';
+const MATERIALS_NAME = 'Материальные расходы (Закупка материалов)';
+const GU_RETURN_NAME = 'Возврат гарантийных удержаний от Заказчика';
+const GU_SUB_NAME = 'Гарантийные удержания субподрядчикам';
+const PAYMENT_FROM_CUSTOMER_NAME = 'Оплата от Заказчика за выполненные работы (на обычный р/с)';
+
+export interface IBddsKpiMetrics {
+  rsBalance: number;
+  obsBalance: number;
+  rsFact: number;
+  obsFact: number;
+  /** Коэффициент покрытия авансов: авансы от заказчика / (материалы + субподряд авансы) */
+  advanceCoverageRatio: number | null;
+  /** Баланс гарантийных удержаний: возврат ГУ от заказчика — ГУ субподрядчикам */
+  retentionGap: number;
+  /** Месяцы, в которых плановый остаток р/с < 0 (кассовый разрыв) */
+  cashGapMonths: number[];
+  /** Факт поступлений от заказчика за работы (для BG-алерта) */
+  customerPaymentFact: MonthValues;
+  /** Остаток на ОБС по месяцам (для Profit Sweeping) */
+  obsCloseByMonth: MonthValues;
+  /** Остаток р/с по месяцам (для OBS Check) */
+  rsCloseByMonth: MonthValues;
+}
+
 interface IUseBddsResult {
   sections: BddsSection[];
   yearSections: Map<number, BddsSection[]>;
@@ -32,8 +59,7 @@ interface IUseBddsResult {
   toggleParent: (categoryId: string) => void;
   updateFactEntry: (categoryId: string, month: number, amount: number) => void;
   saveAll: () => Promise<void>;
-  /** Данные ликвидности для дашборда (текущий месяц, план+факт) */
-  liquidity: { rsBalance: number; obsBalance: number; rsFact: number; obsFact: number };
+  liquidity: IBddsKpiMetrics;
 }
 
 export function useBdds(yearFrom: number, yearTo: number, projectId: string | null = null): IUseBddsResult {
@@ -52,23 +78,82 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
     return yearSections.get(yearFrom) ?? [];
   }, [yearSections, yearFrom]);
 
-  // Ликвидность: из последнего месяца balance_close
-  const liquidity = useMemo(() => {
+  // Ликвидность + KPI метрики
+  const liquidity = useMemo((): IBddsKpiMetrics => {
+    const empty: IBddsKpiMetrics = {
+      rsBalance: 0, obsBalance: 0, rsFact: 0, obsFact: 0,
+      advanceCoverageRatio: null, retentionGap: 0, cashGapMonths: [],
+      customerPaymentFact: {}, obsCloseByMonth: {}, rsCloseByMonth: {},
+    };
     const secs = yearSections.get(yearTo) ?? [];
-    const balClose = secs.find((s) => s.sectionCode === 'operating')
-      ?.rows.find((r) => r.rowType === 'balance_close');
-    if (!balClose?.children) return { rsBalance: 0, obsBalance: 0, rsFact: 0, obsFact: 0 };
+    const opSec = secs.find((s) => s.sectionCode === 'operating');
+    if (!opSec) return empty;
+
+    const balClose = opSec.rows.find((r) => r.rowType === 'balance_close');
+    if (!balClose?.children) return empty;
 
     const rsChild = balClose.children.find((c) => c.name === BALANCE_CLOSE_RS_NAME);
     const obsChild = balClose.children.find((c) => c.name === BALANCE_CLOSE_OBS_NAME);
 
-    // Берём последний месяц с данными (или декабрь)
     const lastMonth = 12;
+
+    // --- Поиск строк для KPI ---
+    const findChildRow = (name: string): BddsRow | undefined => {
+      for (const row of opSec.rows) {
+        if (row.children) {
+          const found = row.children.find((ch) => ch.name === name);
+          if (found) return found;
+        }
+        if (row.name === name) return row;
+      }
+      return undefined;
+    };
+
+    // Покрытие авансов
+    const advanceRs = findChildRow(ADVANCE_INCOME_RS_NAME);
+    const advanceObs = findChildRow(OBS_INCOME_NAME);
+    const materials = findChildRow(MATERIALS_NAME);
+    const subAdv = findChildRow(ADVANCE_SUB_NAME);
+
+    const advanceIn = (advanceRs ? calculateRowTotal(advanceRs.factMonths) || calculateRowTotal(advanceRs.months) : 0)
+      + (advanceObs ? calculateRowTotal(advanceObs.factMonths) || calculateRowTotal(advanceObs.months) : 0);
+    const advanceOut = (materials ? calculateRowTotal(materials.factMonths) || calculateRowTotal(materials.months) : 0)
+      + (subAdv ? calculateRowTotal(subAdv.factMonths) || calculateRowTotal(subAdv.months) : 0);
+
+    const advanceCoverageRatio = advanceOut > 0 ? advanceIn / advanceOut : null;
+
+    // Retention Gap
+    const guReturn = findChildRow(GU_RETURN_NAME);
+    const guSub = findChildRow(GU_SUB_NAME);
+    const retentionGap = (guReturn ? calculateRowTotal(guReturn.factMonths) || calculateRowTotal(guReturn.months) : 0)
+      - (guSub ? calculateRowTotal(guSub.factMonths) || calculateRowTotal(guSub.months) : 0);
+
+    // Кассовый разрыв: плановые месяцы, где р/с < 0
+    const cashGapMonths: number[] = [];
+    const rsCloseByMonth: MonthValues = {};
+    const obsCloseByMonth: MonthValues = {};
+    for (const m of MONTHS) {
+      const rsVal = rsChild?.months[m.key] || 0;
+      rsCloseByMonth[m.key] = rsVal;
+      obsCloseByMonth[m.key] = obsChild?.months[m.key] || 0;
+      if (rsVal < 0) cashGapMonths.push(m.key);
+    }
+
+    // Факт оплаты от заказчика (для BG-алерта)
+    const customerPayment = findChildRow(PAYMENT_FROM_CUSTOMER_NAME);
+    const customerPaymentFact: MonthValues = customerPayment?.factMonths || {};
+
     return {
       rsBalance: rsChild?.months[lastMonth] || 0,
       obsBalance: obsChild?.months[lastMonth] || 0,
       rsFact: rsChild?.factMonths[lastMonth] || 0,
       obsFact: obsChild?.factMonths[lastMonth] || 0,
+      advanceCoverageRatio,
+      retentionGap,
+      cashGapMonths,
+      customerPaymentFact,
+      obsCloseByMonth,
+      rsCloseByMonth,
     };
   }, [yearSections, yearTo]);
 
@@ -256,8 +341,9 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
       const balOpenRow = buildBalanceRow(balanceOpenCats, 'balance_open');
       const balCloseRow = buildBalanceRow(balanceCloseCats, 'balance_close');
 
-      // --- Расчёт Остатка на конец ---
-      // Остаток на конец[M] = Остаток на начало[M] + ΣЧДПвсех секций[M]
+      // --- Rolling Balance: переходящие остатки ---
+      // balOpen[1] = из БД; balOpen[M] = balClose[M-1] (для M > 1)
+      // balClose[M] = balOpen[M] + ΣЧДПвсех секций[M]
       if (balOpenRow && balCloseRow) {
         // Суммируем ЧДП всех секций
         const totalNcfPlan: MonthValues = {};
@@ -272,48 +358,63 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           }
         }
 
-        // Расчёт итогового остатка на конец
-        for (const m of MONTHS) {
-          balCloseRow.months[m.key] = (balOpenRow.months[m.key] || 0) + (totalNcfPlan[m.key] || 0);
-          balCloseRow.factMonths[m.key] = (balOpenRow.factMonths[m.key] || 0) + (totalNcfFact[m.key] || 0);
-        }
-        balCloseRow.total = calculateRowTotal(balCloseRow.months);
-        balCloseRow.factTotal = calculateRowTotal(balCloseRow.factMonths);
-
-        // Расчёт подстрок: ОБС и р/с
-        // ОБС: поступления на ОБС минус (пока нет расходов с ОБС, = поступления ОБС)
+        // ОБС: поступления для расчёта подстрок
         const obsCat = categories.find((c) => c.name === OBS_INCOME_NAME);
         const obsIncomePlan = obsCat ? (planMap.get(obsCat.id) || {}) : {};
         const obsIncomeFact = obsCat ? (factMap.get(obsCat.id) || {}) : {};
 
-        if (balOpenRow.children && balCloseRow.children) {
-          const openRs = balOpenRow.children.find((c) => c.name === BALANCE_OPEN_RS_NAME);
-          const openObs = balOpenRow.children.find((c) => c.name === BALANCE_OPEN_OBS_NAME);
-          const closeRs = balCloseRow.children.find((c) => c.name === BALANCE_CLOSE_RS_NAME);
-          const closeObs = balCloseRow.children.find((c) => c.name === BALANCE_CLOSE_OBS_NAME);
+        const openRs = balOpenRow.children?.find((c) => c.name === BALANCE_OPEN_RS_NAME);
+        const openObs = balOpenRow.children?.find((c) => c.name === BALANCE_OPEN_OBS_NAME);
+        const closeRs = balCloseRow.children?.find((c) => c.name === BALANCE_CLOSE_RS_NAME);
+        const closeObs = balCloseRow.children?.find((c) => c.name === BALANCE_CLOSE_OBS_NAME);
 
-          if (openObs && closeObs) {
-            for (const m of MONTHS) {
-              // ОБС конец = ОБС начало + поступления ОБС
-              closeObs.months[m.key] = (openObs.months[m.key] || 0) + (obsIncomePlan[m.key] || 0);
-              closeObs.factMonths[m.key] = (openObs.factMonths[m.key] || 0) + (obsIncomeFact[m.key] || 0);
+        // Последовательный расчёт по месяцам (rolling)
+        for (const m of MONTHS) {
+          if (m.key > 1) {
+            // Переходящий остаток: начало[M] = конец[M-1]
+            balOpenRow.months[m.key] = balCloseRow.months[m.key - 1] || 0;
+            balOpenRow.factMonths[m.key] = balCloseRow.factMonths[m.key - 1] || 0;
+
+            // Подстроки: ОБС и р/с начало
+            if (openObs && closeObs) {
+              openObs.months[m.key] = closeObs.months[m.key - 1] || 0;
+              openObs.factMonths[m.key] = closeObs.factMonths[m.key - 1] || 0;
             }
-            closeObs.total = calculateRowTotal(closeObs.months);
-            closeObs.factTotal = calculateRowTotal(closeObs.factMonths);
+            if (openRs && closeRs) {
+              openRs.months[m.key] = closeRs.months[m.key - 1] || 0;
+              openRs.factMonths[m.key] = closeRs.factMonths[m.key - 1] || 0;
+            }
           }
 
-          if (openRs && closeRs) {
-            for (const m of MONTHS) {
-              // р/с конец = Общий остаток конец — ОБС конец
-              const obsEnd = closeObs?.months[m.key] || 0;
-              const obsEndFact = closeObs?.factMonths[m.key] || 0;
-              closeRs.months[m.key] = (balCloseRow.months[m.key] || 0) - obsEnd;
-              closeRs.factMonths[m.key] = (balCloseRow.factMonths[m.key] || 0) - obsEndFact;
-            }
-            closeRs.total = calculateRowTotal(closeRs.months);
-            closeRs.factTotal = calculateRowTotal(closeRs.factMonths);
+          // Остаток на конец = Остаток на начало + ЧДП
+          balCloseRow.months[m.key] = (balOpenRow.months[m.key] || 0) + (totalNcfPlan[m.key] || 0);
+          balCloseRow.factMonths[m.key] = (balOpenRow.factMonths[m.key] || 0) + (totalNcfFact[m.key] || 0);
+
+          // ОБС конец = ОБС начало + поступления ОБС
+          if (openObs && closeObs) {
+            closeObs.months[m.key] = (openObs.months[m.key] || 0) + (obsIncomePlan[m.key] || 0);
+            closeObs.factMonths[m.key] = (openObs.factMonths[m.key] || 0) + (obsIncomeFact[m.key] || 0);
+          }
+
+          // р/с конец = Общий конец — ОБС конец
+          if (closeRs) {
+            const obsEnd = closeObs?.months[m.key] || 0;
+            const obsEndFact = closeObs?.factMonths[m.key] || 0;
+            closeRs.months[m.key] = (balCloseRow.months[m.key] || 0) - obsEnd;
+            closeRs.factMonths[m.key] = (balCloseRow.factMonths[m.key] || 0) - obsEndFact;
           }
         }
+
+        // Пересчитываем итоги
+        balOpenRow.total = calculateRowTotal(balOpenRow.months);
+        balOpenRow.factTotal = calculateRowTotal(balOpenRow.factMonths);
+        balCloseRow.total = calculateRowTotal(balCloseRow.months);
+        balCloseRow.factTotal = calculateRowTotal(balCloseRow.factMonths);
+
+        if (openRs) { openRs.total = calculateRowTotal(openRs.months); openRs.factTotal = calculateRowTotal(openRs.factMonths); }
+        if (openObs) { openObs.total = calculateRowTotal(openObs.months); openObs.factTotal = calculateRowTotal(openObs.factMonths); }
+        if (closeRs) { closeRs.total = calculateRowTotal(closeRs.months); closeRs.factTotal = calculateRowTotal(closeRs.factMonths); }
+        if (closeObs) { closeObs.total = calculateRowTotal(closeObs.months); closeObs.factTotal = calculateRowTotal(closeObs.factMonths); }
       }
 
       // Вставляем balance-строки в operating секцию
@@ -421,6 +522,7 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
         const secs = next.get(yearFrom);
         if (!secs) return prev;
 
+        // 1) Обновляем ячейку и пересчитываем NCF в каждой секции
         const updated = secs.map((section) => {
           const hasCategory = section.rows.some(
             (r) => r.categoryId === categoryId || r.children?.some((ch) => ch.categoryId === categoryId)
@@ -428,8 +530,7 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
           if (!hasCategory) return section;
 
           const updatedRows = section.rows.map((row) => {
-            // Не редактируем balance-строки напрямую (кроме подстрок начала)
-            if (row.rowType === 'balance_close') return row;
+            if (row.rowType === 'balance_close' || row.rowType === 'balance_open') return row;
 
             if (row.children) {
               const hasChild = row.children.some((ch) => ch.categoryId === categoryId);
@@ -437,11 +538,7 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
                 const updatedChildren = row.children.map((ch) => {
                   if (ch.categoryId !== categoryId) return ch;
                   const newFactMonths = { ...ch.factMonths, [month]: amount };
-                  return {
-                    ...ch,
-                    factMonths: newFactMonths,
-                    factTotal: calculateRowTotal(newFactMonths),
-                  };
+                  return { ...ch, factMonths: newFactMonths, factTotal: calculateRowTotal(newFactMonths) };
                 });
 
                 const sumFact: MonthValues = {};
@@ -452,51 +549,92 @@ export function useBdds(yearFrom: number, yearTo: number, projectId: string | nu
                 }
 
                 return {
-                  ...row,
-                  children: updatedChildren,
-                  months: sumPlan,
-                  total: calculateRowTotal(sumPlan),
-                  factMonths: sumFact,
-                  factTotal: calculateRowTotal(sumFact),
+                  ...row, children: updatedChildren,
+                  months: sumPlan, total: calculateRowTotal(sumPlan),
+                  factMonths: sumFact, factTotal: calculateRowTotal(sumFact),
                 };
               }
             }
 
             if (row.categoryId !== categoryId || row.isCalculated) return row;
             const newFactMonths = { ...row.factMonths, [month]: amount };
-            return {
-              ...row,
-              factMonths: newFactMonths,
-              factTotal: calculateRowTotal(newFactMonths),
-            };
+            return { ...row, factMonths: newFactMonths, factTotal: calculateRowTotal(newFactMonths) };
           });
 
-          // Пересчитываем NCF
+          // Пересчитываем NCF секции
           const ncfRow = updatedRows.find((r) => r.rowType === 'net_cash_flow');
           if (ncfRow) {
             const dataRows = updatedRows.filter(
-              (r) => (r.rowType !== 'net_cash_flow' && r.rowType !== 'balance_open' && r.rowType !== 'balance_close') || r.children
-            ).filter((r) => r.rowType === 'income' || r.rowType === 'expense' || r.rowType === 'overhead');
-            const factDataRows: BddsRow[] = dataRows.map((r) => ({
-              ...r,
-              months: r.factMonths,
-            }));
+              (r) => r.rowType === 'income' || r.rowType === 'expense' || r.rowType === 'overhead'
+            );
+            const factDataRows: BddsRow[] = dataRows.map((r) => ({ ...r, months: r.factMonths }));
             ncfRow.factMonths = calculateNetCashFlow(section.sectionCode, factDataRows);
             ncfRow.factTotal = calculateRowTotal(ncfRow.factMonths);
           }
 
-          // Пересчитываем balance_close после NCF
-          const balOpen = updatedRows.find((r) => r.rowType === 'balance_open');
-          const balClose = updatedRows.find((r) => r.rowType === 'balance_close');
-          if (balOpen && balClose && ncfRow) {
-            for (const m of MONTHS) {
-              balClose.factMonths[m.key] = (balOpen.factMonths[m.key] || 0) + (ncfRow.factMonths[m.key] || 0);
-            }
-            balClose.factTotal = calculateRowTotal(balClose.factMonths);
-          }
-
           return { ...section, rows: [...updatedRows] };
         });
+
+        // 2) Пересчитываем rolling balance по ВСЕМ секциям
+        const operatingSection = updated.find((s) => s.sectionCode === 'operating');
+        if (operatingSection) {
+          const balOpen = operatingSection.rows.find((r) => r.rowType === 'balance_open');
+          const balClose = operatingSection.rows.find((r) => r.rowType === 'balance_close');
+
+          if (balOpen && balClose) {
+            // Суммируем ЧДП всех секций
+            const totalNcfFact: MonthValues = {};
+            for (const sec of updated) {
+              const ncf = sec.rows.find((r) => r.rowType === 'net_cash_flow');
+              if (ncf) {
+                for (const m of MONTHS) {
+                  totalNcfFact[m.key] = (totalNcfFact[m.key] || 0) + (ncf.factMonths[m.key] || 0);
+                }
+              }
+            }
+
+            const openObs = balOpen.children?.find((c) => c.name === BALANCE_OPEN_OBS_NAME);
+            const openRs = balOpen.children?.find((c) => c.name === BALANCE_OPEN_RS_NAME);
+            const closeObs = balClose.children?.find((c) => c.name === BALANCE_CLOSE_OBS_NAME);
+            const closeRs = balClose.children?.find((c) => c.name === BALANCE_CLOSE_RS_NAME);
+
+            // ОБС поступления
+            const obsCat = categoriesRef.current.find((c) => c.name === OBS_INCOME_NAME);
+            let obsIncomeFact: MonthValues = {};
+            if (obsCat) {
+              for (const sec of updated) {
+                for (const r of sec.rows) {
+                  const child = r.children?.find((ch) => ch.categoryId === obsCat.id);
+                  if (child) { obsIncomeFact = child.factMonths; break; }
+                }
+              }
+            }
+
+            for (const m of MONTHS) {
+              if (m.key > 1) {
+                balOpen.factMonths[m.key] = balClose.factMonths[m.key - 1] || 0;
+                if (openObs && closeObs) openObs.factMonths[m.key] = closeObs.factMonths[m.key - 1] || 0;
+                if (openRs && closeRs) openRs.factMonths[m.key] = closeRs.factMonths[m.key - 1] || 0;
+              }
+
+              balClose.factMonths[m.key] = (balOpen.factMonths[m.key] || 0) + (totalNcfFact[m.key] || 0);
+
+              if (openObs && closeObs) {
+                closeObs.factMonths[m.key] = (openObs.factMonths[m.key] || 0) + (obsIncomeFact[m.key] || 0);
+              }
+              if (closeRs) {
+                closeRs.factMonths[m.key] = (balClose.factMonths[m.key] || 0) - (closeObs?.factMonths[m.key] || 0);
+              }
+            }
+
+            balOpen.factTotal = calculateRowTotal(balOpen.factMonths);
+            balClose.factTotal = calculateRowTotal(balClose.factMonths);
+            if (openRs) openRs.factTotal = calculateRowTotal(openRs.factMonths);
+            if (openObs) openObs.factTotal = calculateRowTotal(openObs.factMonths);
+            if (closeRs) closeRs.factTotal = calculateRowTotal(closeRs.factMonths);
+            if (closeObs) closeObs.factTotal = calculateRowTotal(closeObs.factMonths);
+          }
+        }
 
         next.set(yearFrom, updated);
         return next;

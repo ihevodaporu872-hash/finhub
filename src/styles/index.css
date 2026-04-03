@@ -1204,3 +1204,56 @@ body {
     max-width: 50%;
   }
 }
+
+/* ========== БДДС — расширенные стили ========== */
+
+/* Строки ЧДП — жирный + серый фон (отбивка от обычных статей) */
+.bdds-ncf-row td {
+  background-color: #f5f5f5 !important;
+  font-weight: 700;
+  font-size: 13px;
+  border-top: 2px solid #d9d9d9 !important;
+  border-bottom: 2px solid #d9d9d9 !important;
+}
+
+/* KPI-карточка с красной рамкой (опасность) */
+.bdds-kpi-danger {
+  border: 2px solid #ff4d4f !important;
+  animation: bdds-pulse-warning 2s infinite;
+}
+
+/* Алерт кассового разрыва */
+.bdds-cash-gap-alert {
+  border-color: #faad14;
+}
+
+/* Ячейка с отрицательным остатком р/с (кассовый разрыв) */
+.bdds-cell-cash-gap {
+  background-color: #fff1f0 !important;
+  color: #cf1322 !important;
+  font-weight: 700;
+}
+
+/* Tooltip иконка на балансе */
+.bdds-balance-tooltip-icon {
+  margin-left: 6px;
+  color: #8c8c8c;
+  font-size: 12px;
+  cursor: help;
+}
+
+/* Адаптивность KPI-карточек */
+@media (max-width: 768px) {
+  .bdds-liquidity-card .ant-statistic-title {
+    font-size: 11px;
+  }
+  .bdds-liquidity-card .ant-statistic-content-value {
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .bdds-liquidity-card .ant-statistic-content-value {
+    font-size: 14px !important;
+  }
+}

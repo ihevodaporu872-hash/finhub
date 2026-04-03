@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Table } from 'antd';
-import { RightOutlined, DownOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Table, Tooltip } from 'antd';
+import { RightOutlined, DownOutlined, FileTextOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { BddsSection, BddsTableRow } from '../../types/bdds';
 import type { YearMonthSlot } from '../../utils/constants';
@@ -147,6 +147,7 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
           if (record.isExpandable && record.categoryId) {
             const expanded = expandedParents.has(record.categoryId);
             const isBalance = record.isBalance;
+            const isBalOpen = record.rowType === 'balance_open';
             return (
               <span
                 className={`bdds-clickable-name ${isBalance ? 'bdds-balance-name' : 'bdds-semibold-name'}`}
@@ -154,6 +155,11 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
               >
                 {expanded ? <DownOutlined /> : <RightOutlined />}
                 {' '}{text}
+                {isBalOpen && (
+                  <Tooltip title="Остаток на начало = Остаток на конец предыдущего месяца. Январь — ввод вручную или из банковской выписки.">
+                    <InfoCircleOutlined className="bdds-balance-tooltip-icon" />
+                  </Tooltip>
+                )}
               </span>
             );
           }
@@ -197,6 +203,7 @@ export const BddsTable = ({ sections, yearSections, yearMonthSlots, expandedPare
         if (record.isHeader) return 'bdds-section-header';
         if (record.isBalance && !record.isChild) return 'bdds-balance-row';
         if (record.isBalance && record.isChild) return 'bdds-balance-child-row';
+        if (record.rowType === 'net_cash_flow') return 'bdds-ncf-row';
         if (record.isCalculated && !record.isExpandable) return 'bdds-calculated-row';
         if (record.isExpandable) return 'bdds-expandable-row';
         if (record.isChild) return 'bdds-child-row';

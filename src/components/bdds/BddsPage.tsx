@@ -5,6 +5,7 @@ import { useBdds } from '../../hooks/useBdds';
 import { BddsToolbar } from './BddsToolbar';
 import { BddsTable } from './BddsTable';
 import { BddsLiquidityCards } from './BddsLiquidityCards';
+import { BddsTreasuryAlerts } from './BddsTreasuryAlerts';
 import type { Project } from '../../types/projects';
 
 const currentYear = new Date().getFullYear();
@@ -76,6 +77,7 @@ export const BddsPage = () => {
         <Row gutter={[16, 16]} className="mb-16">
           <Col xs={24}>
             <BddsLiquidityCards liquidity={liquidity} />
+            <BddsTreasuryAlerts liquidity={liquidity} />
           </Col>
         </Row>
       )}

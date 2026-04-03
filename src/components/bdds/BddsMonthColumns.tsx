@@ -48,8 +48,10 @@ export const buildMonthColumns = (
             if (record.isHeader) return null;
             const value = record[`plan_month_${dk}`] as number;
             const display = formatAmount(value);
+            // Красная заливка: остаток р/с на конец < 0
+            const isCashGap = record.rowType === 'balance_close' && record.isChild && value < 0;
             return (
-              <span className={value < 0 ? 'amount-negative' : ''}>
+              <span className={isCashGap ? 'bdds-cell-cash-gap' : value < 0 ? 'amount-negative' : ''}>
                 {display}
               </span>
             );

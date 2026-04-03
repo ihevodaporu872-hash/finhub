@@ -9,18 +9,18 @@ export function calculateNetCashFlow(
   sectionCode: SectionCode,
   rows: BddsRow[]
 ): MonthValues {
-  const income = rows.find((r) => r.rowType === 'income');
-  const expense = rows.find((r) => r.rowType === 'expense');
-  const overhead = rows.find((r) => r.rowType === 'overhead');
+  const incomeRows = rows.filter((r) => r.rowType === 'income');
+  const expenseRows = rows.filter((r) => r.rowType === 'expense');
+  const overheadRows = rows.filter((r) => r.rowType === 'overhead');
 
   const result: MonthValues = {};
 
   for (const m of MONTHS) {
-    const inc = income?.months[m.key] || 0;
-    const exp = expense?.months[m.key] || 0;
+    const inc = incomeRows.reduce((s, r) => s + (r.months[m.key] || 0), 0);
+    const exp = expenseRows.reduce((s, r) => s + (r.months[m.key] || 0), 0);
 
     if (sectionCode === 'operating') {
-      const ovh = overhead?.months[m.key] || 0;
+      const ovh = overheadRows.reduce((s, r) => s + (r.months[m.key] || 0), 0);
       result[m.key] = inc - exp - ovh;
     } else {
       result[m.key] = inc - exp;
