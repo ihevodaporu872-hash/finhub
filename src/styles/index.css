@@ -1259,3 +1259,16 @@ body {
     font-size: 14px !important;
   }
 }
+
+/* Контракты 1С — строки реестра по статусу */
+.contracts-1c-row-new td {
+  background-color: #fff1f0 !important;
+}
+
+.contracts-1c-row-changed td {
+  background-color: #fff7e6 !important;
+}
+
+.contracts-1c-row-overlimit td {
+  background-color: #fffbe6 !important;
+}

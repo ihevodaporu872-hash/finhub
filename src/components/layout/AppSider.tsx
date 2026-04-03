@@ -31,6 +31,7 @@ const menuItems: MenuItem[] = [
   { key: '/actual-execution', icon: <CheckCircleOutlined />, label: 'Факт. выполнение' },
   { key: '/ks6a', icon: <ToolOutlined />, label: 'КС-6а Готовность' },
   { key: '/contracts', icon: <FileProtectOutlined />, label: 'Договоры' },
+  { key: '/contracts-1c', icon: <SwapOutlined />, label: 'Контракты 1С' },
   { key: '/guarantee', icon: <SafetyCertificateOutlined />, label: 'Контроль ГУ' },
   { key: '/dashboards', icon: <DashboardOutlined />, label: 'Дашборды' },
   { key: '/dossier', icon: <FileSearchOutlined />, label: 'Досье договора' },

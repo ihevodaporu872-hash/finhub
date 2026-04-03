@@ -14,6 +14,7 @@ import { GuaranteePageWrapper } from './pages/GuaranteePageWrapper';
 import { ContractDossierPageWrapper } from './pages/ContractDossierPageWrapper';
 import { Ks6aPageWrapper } from './pages/Ks6aPageWrapper';
 import { ContractsPageWrapper } from './pages/ContractsPageWrapper';
+import { Contracts1cPageWrapper } from './pages/Contracts1cPageWrapper';
 import { EtlPageWrapper } from './pages/EtlPageWrapper';
 
 export const App = () => {
@@ -31,6 +32,7 @@ export const App = () => {
           <Route path="/bdr" element={<BdrPageWrapper />} />
           <Route path="/ks6a" element={<Ks6aPageWrapper />} />
           <Route path="/contracts" element={<ContractsPageWrapper />} />
+          <Route path="/contracts-1c" element={<Contracts1cPageWrapper />} />
           <Route path="/bbl" element={<BblPageWrapper />} />
           <Route path="/dashboards" element={<DashboardPageWrapper />} />
           <Route path="/dossier" element={<ContractDossierPageWrapper />} />
