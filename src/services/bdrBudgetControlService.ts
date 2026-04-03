@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase';
 import type { BdrSubType } from '../types/bdr';
-import { BDR_SUB_TYPES, DIRECT_COST_ROW_CODES } from '../utils/bdrConstants';
+import { BDR_SUB_TYPES } from '../utils/bdrConstants';
 
 /** Результат проверки бюджетного лимита */
 export interface IBudgetCheckResult {

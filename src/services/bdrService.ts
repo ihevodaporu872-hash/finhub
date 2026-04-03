@@ -47,109 +47,57 @@ export async function upsertBatch(
   if (error) throw error;
 }
 
-const SMR_CODES = [
-  'prep_works', 'dewatering', 'earthworks', 'waterproofing',
-  'monolith', 'masonry', 'facade', 'roofing', 'interior',
-  'elevators', 'engineering', 'landscaping', 'external_networks',
-];
-
 function removeVat(amount: number, year: number): number {
   const vatRate = year >= 2026 ? 22 : 20;
   return amount * 100 / (100 + vatRate);
 }
 
-/** Итого «Всего СМР по проекту» за все годы */
+/** Итого «Всего СМР по проекту» за все годы — через RPC */
 export async function getSmrAllYearsTotal(projectId?: string): Promise<number> {
-  let query = supabase
-    .from('bdds_income_entries')
-    .select('amount, month_key')
-    .in('work_type_code', SMR_CODES)
-    .limit(10000);
+  const { data, error } = await supabase
+    .rpc('bdr_smr_all_years_total', {
+      p_project_id: projectId || null,
+    });
 
-  if (projectId) {
-    query = query.eq('project_id', projectId);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
-
-  return data.reduce((sum, e) => {
-    const year = parseInt(e.month_key.split('-')[0], 10);
-    return sum + removeVat(Number(e.amount), year);
-  }, 0);
+  return Number(data) || 0;
 }
 
-/** Кумулятивные суммы revenue_smr (план и факт) за все годы до указанного */
+/** Кумулятивные суммы revenue_smr (план и факт) за все годы до указанного — через RPC */
 export async function getRevenueCumulativeBefore(
   year: number,
   projectId?: string
 ): Promise<{ plan: number; fact: number }> {
-  const maxMonthKey = `${year}-01`;
+  const { data, error } = await supabase
+    .rpc('bdr_revenue_cumulative_before', {
+      p_year: year,
+      p_project_id: projectId || null,
+    });
 
-  // План: сумма SMR из bdds_income_entries за все месяцы до year-01
-  let smrQuery = supabase
-    .from('bdds_income_entries')
-    .select('amount, month_key')
-    .in('work_type_code', SMR_CODES)
-    .lt('month_key', maxMonthKey)
-    .limit(10000);
+  if (error) throw error;
 
-  if (projectId) {
-    smrQuery = smrQuery.eq('project_id', projectId);
-  }
-
-  const { data: smrData, error: smrError } = await smrQuery;
-  if (smrError) throw smrError;
-
-  const plan = smrData.reduce((sum, e) => {
-    const y = parseInt(e.month_key.split('-')[0], 10);
-    return sum + removeVat(Number(e.amount), y);
-  }, 0);
-
-  // Факт: сумма ks_amount из actual_execution_entries за все месяцы до year-01
-  let ksQuery = supabase
-    .from('actual_execution_entries')
-    .select('ks_amount, month_key')
-    .lt('month_key', maxMonthKey)
-    .limit(10000);
-
-  if (projectId) {
-    ksQuery = ksQuery.eq('project_id', projectId);
-  }
-
-  const { data: ksData, error: ksError } = await ksQuery;
-  if (ksError) throw ksError;
-
-  const fact = ksData.reduce((sum, e) => {
-    const ky = parseInt(e.month_key.split('-')[0], 10);
-    return sum + removeVat(Number(e.ks_amount), ky);
-  }, 0);
-
-  return { plan, fact };
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    plan: Number(row?.plan_total) || 0,
+    fact: Number(row?.fact_total) || 0,
+  };
 }
 
+/** Помесячные итоги СМР за год — через RPC */
 export async function getSmrTotalsByMonth(year: number, projectId?: string): Promise<{ withoutVat: Record<number, number>; withVat: Record<number, number> }> {
-  let query = supabase
-    .from('bdds_income_entries')
-    .select('work_type_code, month_key, amount')
-    .like('month_key', `${year}-%`)
-    .in('work_type_code', SMR_CODES)
-    .limit(10000);
+  const { data, error } = await supabase
+    .rpc('bdr_smr_totals_by_month', {
+      p_year: year,
+      p_project_id: projectId || null,
+    });
 
-  if (projectId) {
-    query = query.eq('project_id', projectId);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
 
   const withoutVat: Record<number, number> = {};
   const withVat: Record<number, number> = {};
-  for (const e of data) {
-    const month = parseInt(e.month_key.split('-')[1], 10);
-    const amount = Number(e.amount);
-    withoutVat[month] = (withoutVat[month] || 0) + removeVat(amount, year);
-    withVat[month] = (withVat[month] || 0) + amount;
+  for (const row of (data || [])) {
+    withoutVat[row.month] = Number(row.without_vat) || 0;
+    withVat[row.month] = Number(row.with_vat) || 0;
   }
   return { withoutVat, withVat };
 }

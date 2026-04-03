@@ -31,7 +31,7 @@ interface IUseScheduleV2Result {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
-  fillBdds: () => Promise<void>;
+  fillBdds: () => Promise<number>;
   filling: boolean;
 }
 

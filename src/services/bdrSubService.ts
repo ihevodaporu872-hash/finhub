@@ -84,7 +84,7 @@ export async function getSubTotalsByMonth(
   const useNds = NDS_SUB_TYPES.includes(subType);
   let query = supabase
     .from('bdr_sub_entries')
-    .select(useNds ? 'entry_date, amount, amount_without_nds' : 'entry_date, amount')
+    .select('entry_date, amount, amount_without_nds')
     .eq('sub_type', subType)
     .gte('entry_date', `${year}-01-01`)
     .lte('entry_date', `${year}-12-31`)
