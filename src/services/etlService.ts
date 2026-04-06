@@ -73,7 +73,7 @@ export async function manualRoute(
 }
 
 export async function rerouteQuarantine(): Promise<{ routed: number; quarantine: number }> {
-  const { data, error } = await supabase.rpc('etl_reroute_quarantine');
+  const { data, error } = await supabase.rpc('etl_reroute_quarantine', {});
   if (error) throw error;
   return data as { routed: number; quarantine: number };
 }

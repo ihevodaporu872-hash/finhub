@@ -177,7 +177,7 @@ BEGIN
     IF v_entry.document IS NOT NULL AND v_entry.document != '' THEN
       SELECT pm.category_id INTO v_category_id
       FROM etl_1c_payment_masks pm
-      WHERE pm.is_active = true AND v_entry.document ~ pm.pattern
+      WHERE pm.is_active = true AND v_entry.document ~* pm.pattern
       ORDER BY pm.priority ASC
       LIMIT 1;
 
