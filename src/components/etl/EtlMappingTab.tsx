@@ -34,7 +34,9 @@ export const EtlMappingTab: FC = () => {
       form.resetFields();
     } catch (err) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
-      message.error(err instanceof Error ? err.message : 'Ошибка сохранения');
+      console.error('ETL mapping save error:', err);
+      const msg = err instanceof Error ? err.message : typeof err === 'object' && err !== null ? JSON.stringify(err) : 'Ошибка сохранения';
+      message.error(msg, 8);
     }
   };
 

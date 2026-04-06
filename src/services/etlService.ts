@@ -89,19 +89,34 @@ export async function upsertContractMap(
   projectId: string,
   note?: string
 ): Promise<void> {
-  const { error } = await supabase
+  const { data: existing } = await supabase
     .from('etl_1c_contract_map')
-    .upsert(
-      {
+    .select('id')
+    .eq('counterparty_name', counterpartyName)
+    .eq('contract_name', contractName)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from('etl_1c_contract_map')
+      .update({
+        project_id: projectId,
+        note: note || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from('etl_1c_contract_map')
+      .insert({
         counterparty_name: counterpartyName,
         contract_name: contractName,
         project_id: projectId,
         note: note || null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'counterparty_name,contract_name' }
-    );
-  if (error) throw error;
+      });
+    if (error) throw error;
+  }
 }
 
 export async function deleteContractMap(id: string): Promise<void> {
