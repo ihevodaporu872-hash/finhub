@@ -1,10 +1,11 @@
 import { useRef, useState, useEffect } from 'react';
 import type { FC } from 'react';
-import { Button, Table, Tag, message, Card, Space, Statistic, Row, Col, Typography, Upload, Radio } from 'antd';
+import { Button, Table, Tag, message, Card, Space, Statistic, Row, Col, Typography, Upload, Radio, Select } from 'antd';
 import { ReloadOutlined, CloudUploadOutlined, InboxOutlined } from '@ant-design/icons';
 import { useEtlImport } from '../../hooks/useEtlImport';
 import * as etlService from '../../services/etlService';
-import type { IEtlEntry, EtlSourceType } from '../../types/etl';
+import * as bankAccountsService from '../../services/bankAccountsService';
+import type { IEtlEntry, EtlSourceType, IBankAccount } from '../../types/etl';
 
 const { Dragger } = Upload;
 
@@ -31,6 +32,8 @@ export const EtlImportTab: FC = () => {
   const [entries, setEntries] = useState<IEtlEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [sourceType, setSourceType] = useState<EtlSourceType>('account_51');
+  const [bankAccounts, setBankAccounts] = useState<IBankAccount[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadEntries = async () => {
@@ -45,11 +48,24 @@ export const EtlImportTab: FC = () => {
     }
   };
 
-  useEffect(() => { loadEntries(); }, []);
+  const loadBankAccounts = async () => {
+    try {
+      const data = await bankAccountsService.getActive();
+      setBankAccounts(data);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => { loadEntries(); loadBankAccounts(); }, []);
   useEffect(() => { if (lastResult) loadEntries(); }, [lastResult]);
 
   const handleFile = async (file: File) => {
-    const result = await importFile(file, sourceType);
+    if (sourceType === 'account_51' && !selectedBankAccountId) {
+      message.warning('Выберите расчётный счёт');
+      return;
+    }
+    const result = await importFile(file, sourceType, sourceType === 'account_51' ? selectedBankAccountId : null);
     if (result) {
       message.success(
         `Импорт: ${result.total} проводок, ${result.routed} разнесено, ${result.quarantine} в карантине`
@@ -161,6 +177,22 @@ export const EtlImportTab: FC = () => {
             <Radio.Button value="account_51">Карточка сч. 51</Radio.Button>
             <Radio.Button value="account_62">Карточка сч. 62</Radio.Button>
           </Radio.Group>
+
+          {sourceType === 'account_51' && (
+            <Select
+              placeholder="Выберите расчётный счёт"
+              value={selectedBankAccountId}
+              onChange={setSelectedBankAccountId}
+              allowClear
+              size="small"
+              style={{ minWidth: 300 }}
+              options={bankAccounts.map((a) => ({
+                value: a.id,
+                label: `${a.account_number} — ${a.bank_name}${a.bik ? ` (БИК ${a.bik})` : ''}`,
+              }))}
+              notFoundContent="Нет р/с. Добавьте в Справочниках."
+            />
+          )}
 
           <Dragger
             accept=".xlsx,.xls,.csv"

@@ -22,6 +22,7 @@ export interface IEtlEntry {
   routed_category_id: string | null;
   route_method: EtlRouteMethod | null;
   route_log: string | null;
+  bank_account_id: string | null;
   import_batch_id: string;
   imported_at: string;
   routed_at: string | null;
@@ -54,4 +55,15 @@ export interface IEtlImportResult {
   routed: number;
   quarantine: number;
   batchId: string;
+}
+
+export interface IBankAccount {
+  id: string;
+  account_number: string;
+  bank_name: string;
+  bik: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }

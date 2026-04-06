@@ -203,7 +203,7 @@ interface IUseEtlImportResult {
   importing: boolean;
   lastResult: IEtlImportResult | null;
   error: string | null;
-  importFile: (file: File, sourceType: EtlSourceType) => Promise<IEtlImportResult | null>;
+  importFile: (file: File, sourceType: EtlSourceType, bankAccountId?: string | null) => Promise<IEtlImportResult | null>;
 }
 
 export function useEtlImport(): IUseEtlImportResult {
@@ -211,7 +211,7 @@ export function useEtlImport(): IUseEtlImportResult {
   const [lastResult, setLastResult] = useState<IEtlImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const importFile = useCallback(async (file: File, sourceType: EtlSourceType): Promise<IEtlImportResult | null> => {
+  const importFile = useCallback(async (file: File, sourceType: EtlSourceType, bankAccountId?: string | null): Promise<IEtlImportResult | null> => {
     setImporting(true);
     setError(null);
     setLastResult(null);
@@ -278,6 +278,7 @@ export function useEtlImport(): IUseEtlImportResult {
           contract_name: parsed.contract || null,
           payment_purpose: sourceType === 'account_51' ? (document || null) : null,
           source_type: sourceType,
+          bank_account_id: bankAccountId || null,
           import_batch_id: batchId,
         });
       }

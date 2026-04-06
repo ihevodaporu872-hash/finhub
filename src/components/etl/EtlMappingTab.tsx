@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import type { FC } from 'react';
-import { Tabs, Table, Button, Input, Select, Space, Popconfirm, message, Modal, Form, Tag } from 'antd';
+import { Tabs, Table, Button, Input, Select, Space, Popconfirm, message, Modal, Form, Tag, Switch } from 'antd';
 import { PlusOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useEtlMapping } from '../../hooks/useEtlMapping';
 
 export const EtlMappingTab: FC = () => {
   const {
-    contracts, paymentMasks, projects, categories, loading,
-    saveContract, removeContract, saveMask, removeMask, reload,
+    contracts, paymentMasks, bankAccounts, projects, categories, loading,
+    saveContract, removeContract, saveMask, removeMask, saveBankAccount, removeBankAccount, reload,
   } = useEtlMapping();
 
-  const [modalType, setModalType] = useState<'contract' | 'mask' | null>(null);
+  const [modalType, setModalType] = useState<'contract' | 'mask' | 'bank_account' | null>(null);
   const [form] = Form.useForm();
 
   const leafCategories = categories.filter((c) => !c.is_calculated);
@@ -27,6 +27,14 @@ export const EtlMappingTab: FC = () => {
           category_id: values.category_id,
           priority: Number(values.priority) || 0,
           is_active: true,
+        });
+      } else if (modalType === 'bank_account') {
+        await saveBankAccount({
+          account_number: values.account_number,
+          bank_name: values.bank_name,
+          bik: values.bik || '',
+          description: values.description || null,
+          is_active: values.is_active ?? true,
         });
       }
       message.success('Сохранено');
@@ -88,6 +96,28 @@ export const EtlMappingTab: FC = () => {
     },
   ];
 
+  const bankAccountColumns = [
+    { title: 'Номер счёта', dataIndex: 'account_number', key: 'account_number', width: 220 },
+    { title: 'Банк', dataIndex: 'bank_name', key: 'bank_name', ellipsis: true },
+    { title: 'БИК', dataIndex: 'bik', key: 'bik', width: 110 },
+    { title: 'Описание', dataIndex: 'description', key: 'description', ellipsis: true },
+    {
+      title: 'Актив.',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      width: 70,
+      render: (v: boolean) => <Tag color={v ? 'green' : 'default'}>{v ? 'Да' : 'Нет'}</Tag>,
+    },
+    {
+      title: '', key: 'action', width: 50,
+      render: (_: unknown, r: { id: string }) => (
+        <Popconfirm title="Удалить?" onConfirm={() => removeBankAccount(r.id)}>
+          <Button danger size="small" icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ),
+    },
+  ];
+
   const tabItems = [
     {
       key: 'contract',
@@ -117,6 +147,20 @@ export const EtlMappingTab: FC = () => {
         </>
       ),
     },
+    {
+      key: 'bank_account',
+      label: `Расчётные счета (${bankAccounts.length})`,
+      children: (
+        <>
+          <Space style={{ marginBottom: 8 }}>
+            <Button icon={<PlusOutlined />} size="small" onClick={() => { form.resetFields(); setModalType('bank_account'); }}>
+              Добавить
+            </Button>
+          </Space>
+          <Table dataSource={bankAccounts} columns={bankAccountColumns} rowKey="id" size="small" pagination={false} scroll={{ x: 600 }} />
+        </>
+      ),
+    },
   ];
 
   return (
@@ -131,7 +175,7 @@ export const EtlMappingTab: FC = () => {
 
       <Modal
         open={modalType !== null}
-        title={modalType === 'contract' ? 'Связка Контрагент+Договор → Проект' : 'Маска статьи БДДС'}
+        title={modalType === 'contract' ? 'Связка Контрагент+Договор → Проект' : modalType === 'mask' ? 'Маска статьи БДДС' : 'Расчётный счёт'}
         onOk={handleSave}
         onCancel={() => { setModalType(null); form.resetFields(); }}
         okText="Сохранить"
@@ -179,6 +223,25 @@ export const EtlMappingTab: FC = () => {
               </Form.Item>
               <Form.Item name="priority" label="Приоритет (меньше = выше)">
                 <Input type="number" defaultValue={0} />
+              </Form.Item>
+            </>
+          )}
+          {modalType === 'bank_account' && (
+            <>
+              <Form.Item name="account_number" label="Номер расчётного счёта" rules={[{ required: true }]}>
+                <Input placeholder="40702810000000000001" />
+              </Form.Item>
+              <Form.Item name="bank_name" label="Наименование банка" rules={[{ required: true }]}>
+                <Input placeholder="ПАО Сбербанк" />
+              </Form.Item>
+              <Form.Item name="bik" label="БИК">
+                <Input placeholder="044525225" />
+              </Form.Item>
+              <Form.Item name="description" label="Описание">
+                <Input placeholder="Основной р/с" />
+              </Form.Item>
+              <Form.Item name="is_active" label="Активен" valuePropName="checked" initialValue={true}>
+                <Switch />
               </Form.Item>
             </>
           )}
